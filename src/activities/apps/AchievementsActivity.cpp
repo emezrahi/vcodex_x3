@@ -39,22 +39,14 @@ std::string getProgressLabel(const AchievementView& view) {
   }
 }
 
-const char* tabLabel(const bool completed) {
-  if (I18N.getLanguage() == Language::ES) {
-    return completed ? "Completados" : "Pendientes";
-  }
-  return completed ? "Completed" : "Pending";
-}
+const char* tabLabel(const bool completed) { return completed ? tr(STR_COMPLETED) : tr(STR_PENDING); }
 
 std::string tabLabelWithCount(const bool completed, const int count) {
   return std::string(tabLabel(completed)) + " (" + std::to_string(count) + ")";
 }
 
 const char* emptyStateLabel(const bool completed) {
-  if (I18N.getLanguage() == Language::ES) {
-    return completed ? "Aun no hay logros completados" : "No quedan logros pendientes";
-  }
-  return completed ? "No completed achievements yet" : "No pending achievements left";
+  return completed ? tr(STR_NO_COMPLETED_ACHIEVEMENTS) : tr(STR_NO_PENDING_ACHIEVEMENTS);
 }
 
 void drawLockIcon(GfxRenderer& renderer, const int x, const int y, const bool inverted) {

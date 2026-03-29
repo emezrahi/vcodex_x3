@@ -7,6 +7,7 @@
 #include <JsonSettingsIO.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <ctime>
 
 #include "CrossPointSettings.h"
@@ -56,149 +57,156 @@ uint32_t findLongestSessionFromStats() {
   }
   return maxSessionMs;
 }
+
+std::string formatDurationCompact(const uint64_t totalMs) {
+  const uint64_t totalMinutes = totalMs / 60000ULL;
+  const uint64_t hours = totalMinutes / 60ULL;
+  const uint64_t minutes = totalMinutes % 60ULL;
+  if (hours == 0) {
+    return std::to_string(minutes) + "m";
+  }
+  return std::to_string(hours) + "h " + std::to_string(minutes) + "m";
+}
+
+std::string formatUInt(const char* format, const uint64_t value) {
+  char buffer[96];
+  snprintf(buffer, sizeof(buffer), format, static_cast<unsigned int>(value));
+  return buffer;
+}
+
+std::string formatText(const char* format, const std::string& value) {
+  char buffer[128];
+  snprintf(buffer, sizeof(buffer), format, value.c_str());
+  return buffer;
+}
 }  // namespace
 
 AchievementsStore AchievementsStore::instance;
 
 const std::array<AchievementDefinition, static_cast<size_t>(AchievementId::_COUNT)>& AchievementsStore::definitions() {
   static const std::array<AchievementDefinition, static_cast<size_t>(AchievementId::_COUNT)> items = {
-      AchievementDefinition{AchievementId::FirstBookStarted, AchievementMetric::BooksStarted, 1, "Open Sesame",
-                            "Abrete libro", "Start your first book.", "Empieza tu primer libro."},
-      AchievementDefinition{AchievementId::FiveBooksStarted, AchievementMetric::BooksStarted, 5, "Collector",
-                            "Coleccionista", "Start 5 different books.", "Empieza 5 libros distintos."},
-      AchievementDefinition{AchievementId::TenBooksStarted, AchievementMetric::BooksStarted, 10, "Shelf Diver",
-                            "Buceador de estanterias", "Start 10 different books.",
-                            "Empieza 10 libros distintos."},
-      AchievementDefinition{AchievementId::TwentyFiveBooksStarted, AchievementMetric::BooksStarted, 25, "Book Hopper",
-                            "Saltalibros", "Start 25 different books.", "Empieza 25 libros distintos."},
-      AchievementDefinition{AchievementId::FiftyBooksStarted, AchievementMetric::BooksStarted, 50, "Library Tourist",
-                            "Turista de biblioteca", "Start 50 different books.",
-                            "Empieza 50 libros distintos."},
-      AchievementDefinition{AchievementId::FirstSession, AchievementMetric::Sessions, 1, "Warm-Up",
-                            "Calentamiento", "Complete your first counted session.",
-                            "Completa tu primera sesion valida."},
-      AchievementDefinition{AchievementId::TenSessions, AchievementMetric::Sessions, 10, "Page Ritual",
-                            "Ritual lector", "Complete 10 counted sessions.", "Completa 10 sesiones validas."},
-      AchievementDefinition{AchievementId::TwentyFiveSessions, AchievementMetric::Sessions, 25, "Session Machine",
-                            "Maquina de sesiones", "Complete 25 counted sessions.",
-                            "Completa 25 sesiones validas."},
-      AchievementDefinition{AchievementId::FiftySessions, AchievementMetric::Sessions, 50, "Unstoppable",
-                            "Imparable", "Complete 50 counted sessions.", "Completa 50 sesiones validas."},
-      AchievementDefinition{AchievementId::OneHundredSessions, AchievementMetric::Sessions, 100, "Century Sessions",
-                            "Cien sesiones", "Complete 100 counted sessions.",
-                            "Completa 100 sesiones validas."},
-      AchievementDefinition{AchievementId::TwoHundredSessions, AchievementMetric::Sessions, 200, "Routine Master",
-                            "Maestro del ritmo", "Complete 200 counted sessions.",
-                            "Completa 200 sesiones validas."},
-      AchievementDefinition{AchievementId::FirstBookFinished, AchievementMetric::BooksFinished, 1, "The End",
-                            "Fin", "Finish your first book.", "Termina tu primer libro."},
-      AchievementDefinition{AchievementId::TwoBooksFinished, AchievementMetric::BooksFinished, 2, "Belle of the Books",
-                            "Bella entre libros", "Finish 2 books.", "Termina 2 libros."},
-      AchievementDefinition{AchievementId::ThreeBooksFinished, AchievementMetric::BooksFinished, 3, "Trilogy",
-                            "Trilogia", "Finish 3 books.", "Termina 3 libros."},
-      AchievementDefinition{AchievementId::FiveBooksFinished, AchievementMetric::BooksFinished, 5, "Finish Line",
-                            "Meta lectora", "Finish 5 books.", "Termina 5 libros."},
-      AchievementDefinition{AchievementId::SevenBooksFinished, AchievementMetric::BooksFinished, 7, "Word Warden",
-                            "Guardian de las palabras", "Finish 7 books.", "Termina 7 libros."},
-      AchievementDefinition{AchievementId::TenBooksFinished, AchievementMetric::BooksFinished, 10, "Top Shelf",
-                            "Estanteria top", "Finish 10 books.", "Termina 10 libros."},
-      AchievementDefinition{AchievementId::FifteenBooksFinished, AchievementMetric::BooksFinished, 15, "Ink Tamer",
-                            "Domador de tinta", "Finish 15 books.", "Termina 15 libros."},
-      AchievementDefinition{AchievementId::TwentyBooksFinished, AchievementMetric::BooksFinished, 20, "Closing Time",
-                            "Hora del cierre", "Finish 20 books.", "Termina 20 libros."},
+      AchievementDefinition{AchievementId::FirstBookStarted, AchievementMetric::BooksStarted, 1,
+                            StrId::STR_ACH_TITLE_FIRST_BOOK_STARTED},
+      AchievementDefinition{AchievementId::FiveBooksStarted, AchievementMetric::BooksStarted, 5,
+                            StrId::STR_ACH_TITLE_FIVE_BOOKS_STARTED},
+      AchievementDefinition{AchievementId::TenBooksStarted, AchievementMetric::BooksStarted, 10,
+                            StrId::STR_ACH_TITLE_TEN_BOOKS_STARTED},
+      AchievementDefinition{AchievementId::TwentyFiveBooksStarted, AchievementMetric::BooksStarted, 25,
+                            StrId::STR_ACH_TITLE_TWENTY_FIVE_BOOKS_STARTED},
+      AchievementDefinition{AchievementId::FiftyBooksStarted, AchievementMetric::BooksStarted, 50,
+                            StrId::STR_ACH_TITLE_FIFTY_BOOKS_STARTED},
+      AchievementDefinition{AchievementId::FirstSession, AchievementMetric::Sessions, 1,
+                            StrId::STR_ACH_TITLE_FIRST_SESSION},
+      AchievementDefinition{AchievementId::TenSessions, AchievementMetric::Sessions, 10,
+                            StrId::STR_ACH_TITLE_TEN_SESSIONS},
+      AchievementDefinition{AchievementId::TwentyFiveSessions, AchievementMetric::Sessions, 25,
+                            StrId::STR_ACH_TITLE_TWENTY_FIVE_SESSIONS},
+      AchievementDefinition{AchievementId::FiftySessions, AchievementMetric::Sessions, 50,
+                            StrId::STR_ACH_TITLE_FIFTY_SESSIONS},
+      AchievementDefinition{AchievementId::OneHundredSessions, AchievementMetric::Sessions, 100,
+                            StrId::STR_ACH_TITLE_ONE_HUNDRED_SESSIONS},
+      AchievementDefinition{AchievementId::TwoHundredSessions, AchievementMetric::Sessions, 200,
+                            StrId::STR_ACH_TITLE_TWO_HUNDRED_SESSIONS},
+      AchievementDefinition{AchievementId::FirstBookFinished, AchievementMetric::BooksFinished, 1,
+                            StrId::STR_ACH_TITLE_FIRST_BOOK_FINISHED},
+      AchievementDefinition{AchievementId::TwoBooksFinished, AchievementMetric::BooksFinished, 2,
+                            StrId::STR_ACH_TITLE_TWO_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::ThreeBooksFinished, AchievementMetric::BooksFinished, 3,
+                            StrId::STR_ACH_TITLE_THREE_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::FiveBooksFinished, AchievementMetric::BooksFinished, 5,
+                            StrId::STR_ACH_TITLE_FIVE_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::SevenBooksFinished, AchievementMetric::BooksFinished, 7,
+                            StrId::STR_ACH_TITLE_SEVEN_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::TenBooksFinished, AchievementMetric::BooksFinished, 10,
+                            StrId::STR_ACH_TITLE_TEN_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::FifteenBooksFinished, AchievementMetric::BooksFinished, 15,
+                            StrId::STR_ACH_TITLE_FIFTEEN_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::TwentyBooksFinished, AchievementMetric::BooksFinished, 20,
+                            StrId::STR_ACH_TITLE_TWENTY_BOOKS_FINISHED},
       AchievementDefinition{AchievementId::TwentyFiveBooksFinished, AchievementMetric::BooksFinished, 25,
-                            "Beast of the Library", "Bestia de biblioteca", "Finish 25 books.",
-                            "Termina 25 libros."},
+                            StrId::STR_ACH_TITLE_TWENTY_FIVE_BOOKS_FINISHED},
       AchievementDefinition{AchievementId::ThirtyBooksFinished, AchievementMetric::BooksFinished, 30,
-                            "Chapter Collector", "Coleccionista de capitulos", "Finish 30 books.",
-                            "Termina 30 libros."},
-      AchievementDefinition{AchievementId::FortyBooksFinished, AchievementMetric::BooksFinished, 40, "Story Keeper",
-                            "Guardian de historias", "Finish 40 books.", "Termina 40 libros."},
-      AchievementDefinition{AchievementId::FiftyBooksFinished, AchievementMetric::BooksFinished, 50, "Fifty Tomes",
-                            "Cincuenta tomos", "Finish 50 books.", "Termina 50 libros."},
+                            StrId::STR_ACH_TITLE_THIRTY_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::ThirtyFiveBooksFinished, AchievementMetric::BooksFinished, 35,
+                            StrId::STR_ACH_TITLE_THIRTY_FIVE_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::FortyBooksFinished, AchievementMetric::BooksFinished, 40,
+                            StrId::STR_ACH_TITLE_FORTY_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::FortyFiveBooksFinished, AchievementMetric::BooksFinished, 45,
+                            StrId::STR_ACH_TITLE_FORTY_FIVE_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::FiftyBooksFinished, AchievementMetric::BooksFinished, 50,
+                            StrId::STR_ACH_TITLE_FIFTY_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::FiftyFiveBooksFinished, AchievementMetric::BooksFinished, 55,
+                            StrId::STR_ACH_TITLE_FIFTY_FIVE_BOOKS_FINISHED},
       AchievementDefinition{AchievementId::SixtyBooksFinished, AchievementMetric::BooksFinished, 60,
-                            "Library Knight", "Caballero de biblioteca", "Finish 60 books.",
-                            "Termina 60 libros."},
+                            StrId::STR_ACH_TITLE_SIXTY_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::SixtyFiveBooksFinished, AchievementMetric::BooksFinished, 65,
+                            StrId::STR_ACH_TITLE_SIXTY_FIVE_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::SeventyBooksFinished, AchievementMetric::BooksFinished, 70,
+                            StrId::STR_ACH_TITLE_SEVENTY_BOOKS_FINISHED},
       AchievementDefinition{AchievementId::SeventyFiveBooksFinished, AchievementMetric::BooksFinished, 75,
-                            "Lord of the Shelves", "Senor de las estanterias", "Finish 75 books.",
-                            "Termina 75 libros."},
+                            StrId::STR_ACH_TITLE_SEVENTY_FIVE_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::EightyBooksFinished, AchievementMetric::BooksFinished, 80,
+                            StrId::STR_ACH_TITLE_EIGHTY_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::EightyFiveBooksFinished, AchievementMetric::BooksFinished, 85,
+                            StrId::STR_ACH_TITLE_EIGHTY_FIVE_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::NinetyBooksFinished, AchievementMetric::BooksFinished, 90,
+                            StrId::STR_ACH_TITLE_NINETY_BOOKS_FINISHED},
+      AchievementDefinition{AchievementId::NinetyFiveBooksFinished, AchievementMetric::BooksFinished, 95,
+                            StrId::STR_ACH_TITLE_NINETY_FIVE_BOOKS_FINISHED},
       AchievementDefinition{AchievementId::OneHundredBooksFinished, AchievementMetric::BooksFinished, 100,
-                            "Master of a Hundred Tales", "Maestro de cien relatos", "Finish 100 books.",
-                            "Termina 100 libros."},
+                            StrId::STR_ACH_TITLE_ONE_HUNDRED_BOOKS_FINISHED},
       AchievementDefinition{AchievementId::ReadingOneHour, AchievementMetric::TotalReadingMs, 60ULL * 60ULL * 1000ULL,
-                            "One-Hour Club", "Club de la hora", "Read for 1 hour in total.",
-                            "Lee 1 hora en total."},
+                            StrId::STR_ACH_TITLE_READING_ONE_HOUR},
       AchievementDefinition{AchievementId::ReadingFiveHours, AchievementMetric::TotalReadingMs,
-                            5ULL * 60ULL * 60ULL * 1000ULL, "Five and Rising", "Cinco y subiendo",
-                            "Read for 5 hours in total.", "Lee 5 horas en total."},
+                            5ULL * 60ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_READING_FIVE_HOURS},
       AchievementDefinition{AchievementId::ReadingTenHours, AchievementMetric::TotalReadingMs,
-                            10ULL * 60ULL * 60ULL * 1000ULL, "Tenacious Reader", "Lectura tenaz",
-                            "Read for 10 hours in total.", "Lee 10 horas en total."},
+                            10ULL * 60ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_READING_TEN_HOURS},
       AchievementDefinition{AchievementId::ReadingOneDay, AchievementMetric::TotalReadingMs,
-                            24ULL * 60ULL * 60ULL * 1000ULL, "Full Day", "Dia redondo",
-                            "Spend a full day reading in total.", "Suma un dia entero de lectura."},
+                            24ULL * 60ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_READING_ONE_DAY},
       AchievementDefinition{AchievementId::ReadingFiftyHours, AchievementMetric::TotalReadingMs,
-                            50ULL * 60ULL * 60ULL * 1000ULL, "Fifty Forward", "Cincuenta horas",
-                            "Read for 50 hours in total.", "Lee 50 horas en total."},
+                            50ULL * 60ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_READING_FIFTY_HOURS},
       AchievementDefinition{AchievementId::ReadingOneHundredHours, AchievementMetric::TotalReadingMs,
-                            100ULL * 60ULL * 60ULL * 1000ULL, "Century Reader", "Lector centenario",
-                            "Read for 100 hours in total.", "Lee 100 horas en total."},
+                            100ULL * 60ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_READING_ONE_HUNDRED_HOURS},
       AchievementDefinition{AchievementId::ReadingTwoHundredHours, AchievementMetric::TotalReadingMs,
-                            200ULL * 60ULL * 60ULL * 1000ULL, "Double Century", "Doble centuria",
-                            "Read for 200 hours in total.", "Lee 200 horas en total."},
-      AchievementDefinition{AchievementId::FirstGoalDay, AchievementMetric::GoalDays, 1, "Goal Getter",
-                            "Meta cumplida", "Reach the daily goal once.", "Cumple la meta diaria una vez."},
-      AchievementDefinition{AchievementId::SevenGoalDays, AchievementMetric::GoalDays, 7, "Goal Habit",
-                            "Habito de meta", "Reach the daily goal on 7 days.", "Cumple la meta diaria 7 dias."},
-      AchievementDefinition{AchievementId::ThirtyGoalDays, AchievementMetric::GoalDays, 30, "Goal Season",
-                            "Temporada de metas", "Reach the daily goal on 30 days.",
-                            "Cumple la meta diaria 30 dias."},
-      AchievementDefinition{AchievementId::SixtyGoalDays, AchievementMetric::GoalDays, 60, "Goal Calendar",
-                            "Calendario de metas", "Reach the daily goal on 60 days.",
-                            "Cumple la meta diaria 60 dias."},
-      AchievementDefinition{AchievementId::ThreeGoalStreak, AchievementMetric::MaxGoalStreak, 3, "Three in a Row",
-                            "Tres al hilo", "Reach a 3-day goal streak.", "Consigue una racha de meta de 3 dias."},
-      AchievementDefinition{AchievementId::SevenGoalStreak, AchievementMetric::MaxGoalStreak, 7, "Week Locked",
-                            "Semana blindada", "Reach a 7-day goal streak.",
-                            "Consigue una racha de meta de 7 dias."},
-      AchievementDefinition{AchievementId::FourteenGoalStreak, AchievementMetric::MaxGoalStreak, 14, "Fortnight Fire",
-                            "Quincena encendida", "Reach a 14-day goal streak.",
-                            "Consigue una racha de meta de 14 dias."},
-      AchievementDefinition{AchievementId::ThirtyGoalStreak, AchievementMetric::MaxGoalStreak, 30, "Month Boss",
-                            "Jefe del mes", "Reach a 30-day goal streak.",
-                            "Consigue una racha de meta de 30 dias."},
-      AchievementDefinition{AchievementId::SixtyGoalStreak, AchievementMetric::MaxGoalStreak, 60, "Season Boss",
-                            "Jefe de temporada", "Reach a 60-day goal streak.",
-                            "Consigue una racha de meta de 60 dias."},
-      AchievementDefinition{AchievementId::FirstBookmark, AchievementMetric::TotalBookmarksAdded, 1, "Pin It",
-                            "Fijalo", "Add your first bookmark.", "Anade tu primer marcador."},
+                            200ULL * 60ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_READING_TWO_HUNDRED_HOURS},
+      AchievementDefinition{AchievementId::FirstGoalDay, AchievementMetric::GoalDays, 1,
+                            StrId::STR_ACH_TITLE_FIRST_GOAL_DAY},
+      AchievementDefinition{AchievementId::SevenGoalDays, AchievementMetric::GoalDays, 7,
+                            StrId::STR_ACH_TITLE_SEVEN_GOAL_DAYS},
+      AchievementDefinition{AchievementId::ThirtyGoalDays, AchievementMetric::GoalDays, 30,
+                            StrId::STR_ACH_TITLE_THIRTY_GOAL_DAYS},
+      AchievementDefinition{AchievementId::SixtyGoalDays, AchievementMetric::GoalDays, 60,
+                            StrId::STR_ACH_TITLE_SIXTY_GOAL_DAYS},
+      AchievementDefinition{AchievementId::ThreeGoalStreak, AchievementMetric::MaxGoalStreak, 3,
+                            StrId::STR_ACH_TITLE_THREE_GOAL_STREAK},
+      AchievementDefinition{AchievementId::SevenGoalStreak, AchievementMetric::MaxGoalStreak, 7,
+                            StrId::STR_ACH_TITLE_SEVEN_GOAL_STREAK},
+      AchievementDefinition{AchievementId::FourteenGoalStreak, AchievementMetric::MaxGoalStreak, 14,
+                            StrId::STR_ACH_TITLE_FOURTEEN_GOAL_STREAK},
+      AchievementDefinition{AchievementId::ThirtyGoalStreak, AchievementMetric::MaxGoalStreak, 30,
+                            StrId::STR_ACH_TITLE_THIRTY_GOAL_STREAK},
+      AchievementDefinition{AchievementId::SixtyGoalStreak, AchievementMetric::MaxGoalStreak, 60,
+                            StrId::STR_ACH_TITLE_SIXTY_GOAL_STREAK},
+      AchievementDefinition{AchievementId::FirstBookmark, AchievementMetric::TotalBookmarksAdded, 1,
+                            StrId::STR_ACH_TITLE_FIRST_BOOKMARK},
       AchievementDefinition{AchievementId::TenBookmarks, AchievementMetric::TotalBookmarksAdded, 10,
-                            "Bookmark Hoarder", "Acumulador de marcadores", "Add 10 bookmarks.",
-                            "Anade 10 marcadores."},
+                            StrId::STR_ACH_TITLE_TEN_BOOKMARKS},
       AchievementDefinition{AchievementId::TwentyFiveBookmarks, AchievementMetric::TotalBookmarksAdded, 25,
-                            "Flag Garden", "Jardin de banderas", "Add 25 bookmarks.",
-                            "Anade 25 marcadores."},
+                            StrId::STR_ACH_TITLE_TWENTY_FIVE_BOOKMARKS},
       AchievementDefinition{AchievementId::FiftyBookmarks, AchievementMetric::TotalBookmarksAdded, 50,
-                            "Flagstorm", "Tormenta de marcadores", "Add 50 bookmarks.",
-                            "Anade 50 marcadores."},
+                            StrId::STR_ACH_TITLE_FIFTY_BOOKMARKS},
       AchievementDefinition{AchievementId::FifteenMinuteSession, AchievementMetric::MaxSessionMs,
-                            15ULL * 60ULL * 1000ULL, "Settled In", "Ya en ritmo",
-                            "Complete a 15-minute session.", "Completa una sesion de 15 minutos."},
+                            15ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_FIFTEEN_MINUTE_SESSION},
       AchievementDefinition{AchievementId::ThirtyMinuteSession, AchievementMetric::MaxSessionMs,
-                            30ULL * 60ULL * 1000ULL, "Deep Dive", "Inmersion",
-                            "Complete a 30-minute session.", "Completa una sesion de 30 minutos."},
+                            30ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_THIRTY_MINUTE_SESSION},
       AchievementDefinition{AchievementId::FortyFiveMinuteSession, AchievementMetric::MaxSessionMs,
-                            45ULL * 60ULL * 1000ULL, "Locked In", "Enfocado",
-                            "Complete a 45-minute session.", "Completa una sesion de 45 minutos."},
+                            45ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_FORTY_FIVE_MINUTE_SESSION},
       AchievementDefinition{AchievementId::SixtyMinuteSession, AchievementMetric::MaxSessionMs,
-                            60ULL * 60ULL * 1000ULL, "Hourglass", "Reloj de arena",
-                            "Complete a 60-minute session.", "Completa una sesion de 60 minutos."},
+                            60ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_SIXTY_MINUTE_SESSION},
       AchievementDefinition{AchievementId::NinetyMinuteSession, AchievementMetric::MaxSessionMs,
-                            90ULL * 60ULL * 1000ULL, "Marathon", "Maraton",
-                            "Complete a 90-minute session.", "Completa una sesion de 90 minutos."},
+                            90ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_NINETY_MINUTE_SESSION},
       AchievementDefinition{AchievementId::TwoHourSession, AchievementMetric::MaxSessionMs,
-                            120ULL * 60ULL * 1000ULL, "Ultra Session", "Sesion ultra",
-                            "Complete a 120-minute session.", "Completa una sesion de 120 minutos."},
+                            120ULL * 60ULL * 1000ULL, StrId::STR_ACH_TITLE_TWO_HOUR_SESSION},
   };
   return items;
 }
@@ -230,12 +238,47 @@ void AchievementsStore::markDirty() { dirty = true; }
 
 std::string AchievementsStore::getTitle(const AchievementId id) const {
   const auto& definition = getDefinition(id);
-  return I18N.getLanguage() == Language::ES ? definition.titleEs : definition.titleEn;
+  return I18N.get(definition.titleId);
 }
 
 std::string AchievementsStore::getDescription(const AchievementId id) const {
   const auto& definition = getDefinition(id);
-  return I18N.getLanguage() == Language::ES ? definition.descriptionEs : definition.descriptionEn;
+
+  switch (definition.metric) {
+    case AchievementMetric::BooksStarted:
+      if (definition.target == 1) {
+        return I18N.get(StrId::STR_ACH_DESC_START_FIRST_BOOK);
+      }
+      return formatUInt(I18N.get(StrId::STR_ACH_DESC_START_BOOKS_FMT), definition.target);
+    case AchievementMetric::BooksFinished:
+      if (definition.target == 1) {
+        return I18N.get(StrId::STR_ACH_DESC_FINISH_FIRST_BOOK);
+      }
+      return formatUInt(I18N.get(StrId::STR_ACH_DESC_FINISH_BOOKS_FMT), definition.target);
+    case AchievementMetric::Sessions:
+      if (definition.target == 1) {
+        return I18N.get(StrId::STR_ACH_DESC_FIRST_SESSION);
+      }
+      return formatUInt(I18N.get(StrId::STR_ACH_DESC_SESSIONS_FMT), definition.target);
+    case AchievementMetric::TotalReadingMs:
+      return formatText(I18N.get(StrId::STR_ACH_DESC_TOTAL_READING_FMT), formatDurationCompact(definition.target));
+    case AchievementMetric::GoalDays:
+      if (definition.target == 1) {
+        return I18N.get(StrId::STR_ACH_DESC_FIRST_GOAL_DAY);
+      }
+      return formatUInt(I18N.get(StrId::STR_ACH_DESC_GOAL_DAYS_FMT), definition.target);
+    case AchievementMetric::MaxGoalStreak:
+      return formatUInt(I18N.get(StrId::STR_ACH_DESC_GOAL_STREAK_FMT), definition.target);
+    case AchievementMetric::TotalBookmarksAdded:
+      if (definition.target == 1) {
+        return I18N.get(StrId::STR_ACH_DESC_FIRST_BOOKMARK);
+      }
+      return formatUInt(I18N.get(StrId::STR_ACH_DESC_BOOKMARKS_FMT), definition.target);
+    case AchievementMetric::MaxSessionMs:
+      return formatText(I18N.get(StrId::STR_ACH_DESC_LONG_SESSION_FMT), formatDurationCompact(definition.target));
+  }
+
+  return "";
 }
 
 void AchievementsStore::unlock(const AchievementId id, const uint32_t timestamp, const bool enqueuePopup) {

@@ -18,6 +18,5 @@ void BootActivity::onEnter() {
   renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 70, "CrossPoint vCodex", true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 95, tr(STR_BOOTING));
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight - 30, CROSSPOINT_VERSION);
-  renderer.drawCenteredText(SMALL_FONT_ID, pageHeight - 16, "VC " CROSSPOINT_VERSION_CODE);
   renderer.displayBuffer();
 }

@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <I18nKeys.h>
+
 #include "ReadingStatsStore.h"
 
 class AchievementsStore;
@@ -78,6 +80,15 @@ enum class AchievementId : uint8_t {
   SixtyBooksFinished,
   SeventyFiveBooksFinished,
   OneHundredBooksFinished,
+  ThirtyFiveBooksFinished,
+  FortyFiveBooksFinished,
+  FiftyFiveBooksFinished,
+  SixtyFiveBooksFinished,
+  SeventyBooksFinished,
+  EightyBooksFinished,
+  EightyFiveBooksFinished,
+  NinetyBooksFinished,
+  NinetyFiveBooksFinished,
   _COUNT,
 };
 
@@ -85,10 +96,7 @@ struct AchievementDefinition {
   AchievementId id;
   AchievementMetric metric;
   uint64_t target;
-  const char* titleEn;
-  const char* titleEs;
-  const char* descriptionEn;
-  const char* descriptionEs;
+  StrId titleId;
 };
 
 struct AchievementState {

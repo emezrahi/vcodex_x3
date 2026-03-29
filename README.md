@@ -20,8 +20,8 @@ This project is **not affiliated with Xteink**.
 |---|---|
 | Base firmware | CrossPoint Reader |
 | Device | Xteink X4 |
-| Current release | `1.1.7-vcodex` |
-| Version code | `2026032907` |
+| Current release | `1.1.8-vcodex` |
+| Version code | `2026032908` |
 | Release notes | [CHANGELOG.md](./CHANGELOG.md) |
 | Recommended install | browser OTA fast flash |
 
@@ -202,65 +202,103 @@ It provides:
 
 Current achievement list:
 
-- Started books:
-- `Open Sesame` - start your first book
-- `Collector` - start 5 different books
-- `Shelf Diver` - start 10 different books
-- `Book Hopper` - start 25 different books
-- `Library Tourist` - start 50 different books
-- Counted sessions:
-- `Warm-Up` - complete your first counted session
-- `Page Ritual` - complete 10 counted sessions
-- `Session Machine` - complete 25 counted sessions
-- `Unstoppable` - complete 50 counted sessions
-- `Century Sessions` - complete 100 counted sessions
-- `Routine Master` - complete 200 counted sessions
-- Finished books:
-- `The End` - finish your first book
-- `Belle of the Books` - finish 2 books
-- `Trilogy` - finish 3 books
-- `Finish Line` - finish 5 books
-- `Word Warden` - finish 7 books
-- `Top Shelf` - finish 10 books
-- `Ink Tamer` - finish 15 books
-- `Closing Time` - finish 20 books
-- `Beast of the Library` - finish 25 books
-- `Chapter Collector` - finish 30 books
-- `Story Keeper` - finish 40 books
-- `Fifty Tomes` - finish 50 books
-- `Library Knight` - finish 60 books
-- `Lord of the Shelves` - finish 75 books
-- `Master of a Hundred Tales` - finish 100 books
-- Total reading time:
-- `One-Hour Club` - read for 1 hour in total
-- `Five and Rising` - read for 5 hours in total
-- `Tenacious Reader` - read for 10 hours in total
-- `Full Day` - read for 24 hours in total
-- `Fifty Forward` - read for 50 hours in total
-- `Century Reader` - read for 100 hours in total
-- `Double Century` - read for 200 hours in total
-- Goal days and streaks:
-- `Goal Getter` - reach the daily goal once
-- `Goal Habit` - reach the daily goal on 7 different days
-- `Goal Season` - reach the daily goal on 30 different days
-- `Goal Calendar` - reach the daily goal on 60 different days
-- `Three in a Row` - reach a 3-day goal streak
-- `Week Locked` - reach a 7-day goal streak
-- `Fortnight Fire` - reach a 14-day goal streak
-- `Month Boss` - reach a 30-day goal streak
-- `Season Boss` - reach a 60-day goal streak
-- Bookmarks:
-- `Pin It` - add your first bookmark
-- `Bookmark Hoarder` - add 10 bookmarks
-- `Flag Garden` - add 25 bookmarks
-- `Flagstorm` - add 50 bookmarks
-- Long sessions:
-- `Settled In` - complete a 15-minute session
-- `Deep Dive` - complete a 30-minute session
-- `Locked In` - complete a 45-minute session
-- `Hourglass` - complete a 60-minute session
-- `Marathon` - complete a 90-minute session
-- `Ultra Session` - complete a 120-minute session
+Current catalog: `61 achievements`
+
+### Started books
+
+| Title | Unlock condition |
+|---|---|
+| `Open Sesame` | start your first book |
+| `My Precious` | start 5 different books |
+| `I Volunteer as Tribute` | start 10 different books |
+| `Into the Wardrobe` | start 25 different books |
+| `You Shall Not Pass... Yet` | start 50 different books |
+
+### Counted sessions
+
+| Title | Unlock condition |
+|---|---|
+| `The First Page` | complete your first counted session |
+| `Just One More Page` | complete 10 counted sessions |
+| `Hold the Book!` | complete 25 counted sessions |
+| `I Can Do This All Day` | complete 50 counted sessions |
+| `A Reader Has No Limits` | complete 100 counted sessions |
+| `Master of Readmonies` | complete 200 counted sessions |
+
+### Finished books
+
+| Title | Unlock condition |
+|---|---|
+| `It's leviOsa, not levioSA!` | finish your first book |
+| `The Two Towers` | finish 2 books |
+| `Trilogy` | finish 3 books |
+| `Matilda` | finish 5 books |
+| `Jane Eyre` | finish 7 books |
+| `Lizzy Bennet` | finish 10 books |
+| `Belle of the Library` | finish 15 books |
+| `Hermione Granger` | finish 20 books |
+| `The NeverEnding Story` | finish 25 books |
+| `The Book Was Better` | finish 30 books |
+| `The Reader` | finish 35 books |
+| `Gandalf the White` | finish 40 books |
+| `Rory Gilmore` | finish 45 books |
+| `The Book Thief` | finish 50 books |
+| `One Read to Rule Them All` | finish 55 books |
+| `The Library of Alexandria` | finish 60 books |
+| `Dorian Read` | finish 65 books |
+| `The Name of the Reader` | finish 70 books |
+| `Moony, Wormtail, Padfoot & Read` | finish 75 books |
+| `Bibliophile Supreme` | finish 80 books |
+| `The Ultimate Plot Twist` | finish 85 books |
+| `Guardian of Stories` | finish 90 books |
+| `Master of Tomes` | finish 95 books |
+| `The Pagemaster` | finish 100 books |
+
+### Total reading time
+
+| Title | Unlock condition |
+|---|---|
+| `One Hour Later` | read for 1 hour in total |
+| `After All This Time?` | read for 5 hours in total |
+| `Always` | read for 10 hours in total |
+| `24 Hours Later` | read for 24 hours in total |
+| `Halfway to Narnia` | read for 50 hours in total |
+| `Centurion of Chapters` | read for 100 hours in total |
+| `Readzilla` | read for 200 hours in total |
+
+### Goal days and streaks
+
+| Title | Unlock condition |
+|---|---|
+| `Mission Accomplished` | reach the daily goal once |
+| `Seven, Seven, Seven!` | reach the daily goal on 7 different days |
+| `The Month of Living Bookishly` | reach the daily goal on 30 different days |
+| `The Daily Prophet` | reach the daily goal on 60 different days |
+| `Not Today` | reach a 3-day goal streak |
+| `Week of the Reader` | reach a 7-day goal streak |
+| `Fortnight Knight` | reach a 14-day goal streak |
+| `The Streak Strikes Back` | reach a 30-day goal streak |
+| `The Return of the Read` | reach a 60-day goal streak |
+
+### Bookmarks
+
+| Title | Unlock condition |
+|---|---|
+| `Marked for Later` | add your first bookmark |
+| `The Usual Susmarks` | add 10 bookmarks |
+| `The Bookmark Knight Rises` | add 25 bookmarks |
+| `Too Many Tabs` | add 50 bookmarks |
+
+### Long sessions
+
+| Title | Unlock condition |
+|---|---|
+| `And So It Begins` | complete a 15-minute session |
+| `One Does Not Simply Stop` | complete a 30-minute session |
+| `Locked, Loaded, Booked` | complete a 45-minute session |
+| `There and Back Again` | complete a 60-minute session |
+| `The Long Read` | complete a 90-minute session |
+| `Extended Edition` | complete a 120-minute session |
 
 Important behavior:
 
@@ -364,8 +402,8 @@ Important files include:
 
 Each firmware build exposes two identifiers:
 
-- `version`: the human-readable release line, for example `1.1.6-vcodex`
-- `version code`: a numeric build identifier, currently `2026032906`
+- `version`: the human-readable release line, currently `1.1.8-vcodex`
+- `version code`: a numeric build identifier, currently `2026032908`
 
 The boot screen shows both values, so you can identify exactly which firmware is installed on the device.
 For a brief release history, see [CHANGELOG.md](./CHANGELOG.md).

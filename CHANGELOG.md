@@ -2,6 +2,14 @@
 
 Brief firmware history for `crosspoint-vcodex`.
 
+## 1.1.8-vcodex
+
+- rebuilt the achievements catalog with the new title set and many more finished-book milestones up to `100 books`
+- moved achievements names and conditions to real i18n-backed strings instead of English/Spanish-only code paths
+- regenerated the translation files from a clean base to fix corrupted language text such as the mojibake seen in `Languages`
+
+Version code: `2026032908`
+
 ## 1.1.7-vcodex
 
 - fixed `Achievements` title/description mismatches caused by definition lookup using enum order instead of the real achievement id
