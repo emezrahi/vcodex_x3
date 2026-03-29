@@ -267,7 +267,8 @@ void ReadingStatsActivity::render(RenderLock&&) {
   const int summaryTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
   const int detailsTop = summaryTop + SUMMARY_CARD_HEIGHT * 3 + SUMMARY_GAP * 2 + metrics.verticalSpacing;
   const uint64_t todayReadingMs = READING_STATS.getTodayReadingMs();
-  const std::string dailyGoalValue = formatDurationHm(todayReadingMs) + " / " + formatDurationHm(DAILY_READING_GOAL_MS);
+  const std::string dailyGoalValue =
+      formatDurationHm(todayReadingMs) + " / " + formatDurationHm(getDailyReadingGoalMs());
 
   HeaderDateUtils::drawHeaderWithDate(renderer, tr(STR_READING_STATS));
 
@@ -277,7 +278,7 @@ void ReadingStatsActivity::render(RenderLock&&) {
                  tr(STR_MAX_STREAK), std::to_string(READING_STATS.getMaxStreakDays()));
   drawMetricCard(renderer, Rect{sidePadding, summaryTop + SUMMARY_CARD_HEIGHT + SUMMARY_GAP, cardWidth,
                                 SUMMARY_CARD_HEIGHT},
-                 tr(STR_DAILY_GOAL), dailyGoalValue, todayReadingMs >= DAILY_READING_GOAL_MS);
+                 tr(STR_DAILY_GOAL), dailyGoalValue, todayReadingMs >= getDailyReadingGoalMs());
   drawMetricCard(renderer,
                  Rect{sidePadding + cardWidth + SUMMARY_GAP, summaryTop + SUMMARY_CARD_HEIGHT + SUMMARY_GAP, cardWidth,
                       SUMMARY_CARD_HEIGHT},

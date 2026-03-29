@@ -20,8 +20,8 @@ This project is **not affiliated with Xteink**.
 |---|---|
 | Base firmware | CrossPoint Reader |
 | Device | Xteink X4 |
-| Current release | `1.1.2-vcodex` |
-| Version code | `2026032902` |
+| Current release | `1.1.3-vcodex` |
+| Version code | `2026032903` |
 | Release notes | [CHANGELOG.md](./CHANGELOG.md) |
 | Recommended install | browser OTA fast flash |
 
@@ -72,6 +72,7 @@ For most users, this is the easiest way to install the firmware:
 | `Bookmarks` | EPUB bookmarks plus a global bookmarks app | [Bookmarks](#bookmarks) |
 | `Sleep tools` | folder selection, preview and sequential/shuffle behavior | [Sleep](#sleep) |
 | `Date controls` | global date format and time zone settings | [Settings](#settings) |
+| `Configurable Daily Goal` | choose `15 / 30 / 45 / 60 min` and use that target for goal-based stats | [Reading analytics suite](#reading-analytics-suite) |
 | `Version code` | exact build identification shown on boot | [Versioning](#versioning) |
 
 ## 5-minute start
@@ -165,8 +166,9 @@ That means these views stay coherent with each other:
 
 ### Important rules
 
-- a reading session counts when it reaches at least `1 minute`
-- `Goal Streak` depends on whether you completed the `Daily Goal`
+- a reading session counts when it reaches at least `3 minutes`
+- `Daily Goal` is configurable to `15 / 30 / 45 / 60 min`
+- `Goal Streak` depends on whether you completed the configured `Daily Goal`
 - `Reading Day` filters out books with less than `3 minutes` on that day
 - books inside `/ignore_stats/` and its subdirectories are excluded from stats, sessions, heatmap, timeline and achievement tracking
 
@@ -280,7 +282,7 @@ Main options:
 | Area | Options |
 |---|---|
 | Date | `Display Day`, `Auto Sync Day`, `Date Format`, `Time Zone` |
-| Reading stats | `Show after reading`, `Reset Reading Stats`, `Export Reading Stats`, `Import Reading Stats` |
+| Reading stats | `Daily Goal`, `Show after reading`, `Reset Reading Stats`, `Export Reading Stats`, `Import Reading Stats` |
 | Achievements | `Enable achievements`, `Achievement popups`, `Reset achievements`, `Sync with prev. stats` |
 | Navigation | `Shortcuts`, `Visibility Home and Apps`, `Order Home shortcuts`, `Order Apps shortcuts` |
 
@@ -322,8 +324,8 @@ Important files include:
 
 Each firmware build exposes two identifiers:
 
-- `version`: the human-readable release line, for example `1.1.2-vcodex`
-- `version code`: a numeric build identifier, currently `2026032902`
+- `version`: the human-readable release line, for example `1.1.3-vcodex`
+- `version code`: a numeric build identifier, currently `2026032903`
 
 The boot screen shows both values, so you can identify exactly which firmware is installed on the device.
 For a brief release history, see [CHANGELOG.md](./CHANGELOG.md).

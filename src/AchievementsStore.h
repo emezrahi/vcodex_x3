@@ -118,6 +118,7 @@ class AchievementsStore {
   ProgressSnapshot buildProgressSnapshot() const;
   void evaluateProgress(bool enqueuePopups);
   void bootstrapFromCurrentStats();
+  bool refreshGoalDerivedProgressFromStats();
   uint64_t getEffectiveTodayReadingMs(uint32_t dayOrdinal) const;
 
  public:

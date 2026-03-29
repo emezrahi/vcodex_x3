@@ -16,11 +16,11 @@ constexpr char READING_STATS_FILE_JSON[] = "/.crosspoint/reading_stats.json";
 constexpr unsigned long MAX_READING_GAP_MS = 30UL * 60UL * 1000UL;
 constexpr unsigned long SESSION_HEARTBEAT_MS = 60UL * 1000UL;
 constexpr unsigned long DEFERRED_SAVE_INTERVAL_MS = 30UL * 1000UL;
-constexpr uint64_t MIN_SESSION_READING_MS = 60ULL * 1000ULL;
+constexpr uint64_t MIN_SESSION_READING_MS = 3ULL * 60ULL * 1000ULL;
 
 uint8_t clampPercent(const uint8_t percent) { return std::min<uint8_t>(percent, 100); }
 
-bool countsForStreak(const ReadingDayStats& day) { return day.readingMs >= DAILY_READING_GOAL_MS; }
+bool countsForStreak(const ReadingDayStats& day) { return day.readingMs >= getDailyReadingGoalMs(); }
 
 bool isIgnoredStatsPath(const std::string& path) {
   if (path.empty()) {
@@ -250,6 +250,7 @@ bool ReadingStatsStore::persistToFile(const char* path) const {
 void ReadingStatsStore::rebuildSummaryCache() const {
   SummaryCache cache;
   cache.referenceDayOrdinal = getReferenceDayOrdinal();
+  cache.goalReadingMs = getDailyReadingGoalMs();
 
   for (const auto& book : books) {
     cache.totalReadingMs += book.totalReadingMs;
@@ -527,21 +528,22 @@ void ReadingStatsStore::endSession() {
 }
 
 uint32_t ReadingStatsStore::getBooksFinishedCount() const {
-  if (!summaryCache.valid) {
+  if (!summaryCache.valid || summaryCache.goalReadingMs != getDailyReadingGoalMs()) {
     rebuildSummaryCache();
   }
   return summaryCache.booksFinishedCount;
 }
 
 uint64_t ReadingStatsStore::getTotalReadingMs() const {
-  if (!summaryCache.valid) {
+  if (!summaryCache.valid || summaryCache.goalReadingMs != getDailyReadingGoalMs()) {
     rebuildSummaryCache();
   }
   return summaryCache.totalReadingMs;
 }
 
 uint64_t ReadingStatsStore::getTodayReadingMs() const {
-  if (!summaryCache.valid || summaryCache.referenceDayOrdinal != getReferenceDayOrdinal()) {
+  if (!summaryCache.valid || summaryCache.referenceDayOrdinal != getReferenceDayOrdinal() ||
+      summaryCache.goalReadingMs != getDailyReadingGoalMs()) {
     rebuildSummaryCache();
   }
   return summaryCache.todayReadingMs;
@@ -551,7 +553,8 @@ uint64_t ReadingStatsStore::getRecentReadingMs(const uint32_t days) const {
   if (days == 0) {
     return 0;
   }
-  if (!summaryCache.valid || summaryCache.referenceDayOrdinal != getReferenceDayOrdinal()) {
+  if (!summaryCache.valid || summaryCache.referenceDayOrdinal != getReferenceDayOrdinal() ||
+      summaryCache.goalReadingMs != getDailyReadingGoalMs()) {
     rebuildSummaryCache();
   }
   if (days <= 7) {
@@ -577,14 +580,15 @@ uint64_t ReadingStatsStore::getRecentReadingMs(const uint32_t days) const {
 }
 
 uint32_t ReadingStatsStore::getCurrentStreakDays() const {
-  if (!summaryCache.valid || summaryCache.referenceDayOrdinal != getReferenceDayOrdinal()) {
+  if (!summaryCache.valid || summaryCache.referenceDayOrdinal != getReferenceDayOrdinal() ||
+      summaryCache.goalReadingMs != getDailyReadingGoalMs()) {
     rebuildSummaryCache();
   }
   return summaryCache.currentStreakDays;
 }
 
 uint32_t ReadingStatsStore::getMaxStreakDays() const {
-  if (!summaryCache.valid) {
+  if (!summaryCache.valid || summaryCache.goalReadingMs != getDailyReadingGoalMs()) {
     rebuildSummaryCache();
   }
   return summaryCache.maxStreakDays;

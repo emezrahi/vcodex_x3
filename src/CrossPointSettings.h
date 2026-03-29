@@ -140,6 +140,13 @@ class CrossPointSettings {
     DATE_YYYY_MM_DD = 2,
     DATE_FORMAT_COUNT
   };
+  enum DAILY_GOAL_TARGET {
+    DAILY_GOAL_15_MIN = 0,
+    DAILY_GOAL_30_MIN = 1,
+    DAILY_GOAL_45_MIN = 2,
+    DAILY_GOAL_60_MIN = 3,
+    DAILY_GOAL_TARGET_COUNT
+  };
   enum SHORTCUT_LOCATION {
     SHORTCUT_HOME = 0,
     SHORTCUT_APPS = 1,
@@ -208,6 +215,7 @@ class CrossPointSettings {
   uint8_t autoSyncDay = 1;
   uint8_t timeZonePreset = 0;
   uint8_t dateFormat = DATE_DD_MM_YYYY;
+  uint8_t dailyGoalTarget = DAILY_GOAL_30_MIN;
   uint8_t showStatsAfterReading = 0;
   uint8_t achievementsEnabled = 1;
   uint8_t achievementPopups = 1;
@@ -273,6 +281,7 @@ class CrossPointSettings {
  public:
   float getReaderLineCompression() const;
   unsigned long getSleepTimeoutMs() const;
+  uint64_t getDailyGoalMs() const;
   int getRefreshFrequency() const;
 };
 

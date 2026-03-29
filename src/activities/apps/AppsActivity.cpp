@@ -30,7 +30,7 @@ std::string formatDurationHmCompact(const uint64_t totalMs) {
 
 std::string getStatsShortcutSubtitle() {
   const std::string todayValue = formatDurationHmCompact(READING_STATS.getTodayReadingMs());
-  const std::string goalValue = formatDurationHmCompact(DAILY_READING_GOAL_MS);
+  const std::string goalValue = formatDurationHmCompact(getDailyReadingGoalMs());
   return todayValue + " / " + goalValue + " | " + std::to_string(READING_STATS.getCurrentStreakDays());
 }
 

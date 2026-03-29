@@ -74,7 +74,7 @@ std::string formatDurationHmCompact(const uint64_t totalMs) {
 std::string getReadingStatsShortcutSubtitle() {
   const uint64_t todayReadingMs = READING_STATS.getTodayReadingMs();
   const std::string todayValue = formatDurationHmCompact(todayReadingMs);
-  const std::string goalValue = formatDurationHmCompact(DAILY_READING_GOAL_MS);
+  const std::string goalValue = formatDurationHmCompact(getDailyReadingGoalMs());
   return todayValue + " / " + goalValue + " | " + std::to_string(READING_STATS.getCurrentStreakDays());
 }
 
@@ -124,7 +124,7 @@ UIIcon getHomeShortcutIcon(const HomeShortcutEntry& entry) {
 
 bool showHomeShortcutAccessory(const HomeShortcutEntry& entry) {
   return entry.definition && entry.definition->id == ShortcutId::Stats &&
-         READING_STATS.getTodayReadingMs() >= DAILY_READING_GOAL_MS;
+         READING_STATS.getTodayReadingMs() >= getDailyReadingGoalMs();
 }
 }  // namespace
 

@@ -169,6 +169,10 @@ void SettingsActivity::onEnter() {
                         "dateFormat", StrId::STR_APPS));
   appSettings.push_back(SettingInfo::Action(StrId::STR_TIME_ZONE, SettingAction::TimeZone));
   appSettings.push_back(SettingInfo::Section(StrId::STR_READING_STATS));
+  appSettings.push_back(SettingInfo::Enum(StrId::STR_DAILY_GOAL, &CrossPointSettings::dailyGoalTarget,
+                                          {StrId::STR_MIN_15, StrId::STR_MIN_30, StrId::STR_MIN_45,
+                                           StrId::STR_MIN_60},
+                                          "dailyGoalTarget", StrId::STR_APPS));
   appSettings.push_back(SettingInfo::Toggle(StrId::STR_SHOW_AFTER_READING, &CrossPointSettings::showStatsAfterReading,
                                             "showStatsAfterReading", StrId::STR_APPS));
   appSettings.push_back(SettingInfo::Action(StrId::STR_RESET, SettingAction::ResetReadingStats));
@@ -461,6 +465,10 @@ void SettingsActivity::toggleCurrentSetting() {
     return;  // Results will be handled in the result handler, so we can return early here
   } else {
     return;
+  }
+
+  if (setting.valuePtr == &CrossPointSettings::dailyGoalTarget) {
+    ACHIEVEMENTS.syncWithPreviousStats();
   }
 
   SETTINGS.saveToFile();

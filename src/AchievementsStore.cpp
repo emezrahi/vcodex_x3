@@ -19,7 +19,7 @@ constexpr char ACHIEVEMENTS_FILE_JSON[] = "/.crosspoint/achievements.json";
 uint32_t countGoalDaysFromStats() {
   uint32_t count = 0;
   for (const auto& day : READING_STATS.getReadingDays()) {
-    if (day.readingMs >= DAILY_READING_GOAL_MS) {
+    if (day.readingMs >= getDailyReadingGoalMs()) {
       ++count;
     }
   }
@@ -237,20 +237,34 @@ void AchievementsStore::bootstrapFromCurrentStats() {
   countedSessions = countSessionsFromStats();
   totalBookmarksAdded = countCurrentBookmarksFromStats();
   longestSessionMs = findLongestSessionFromStats();
-  goalDaysCount = countGoalDaysFromStats();
-  currentGoalStreak = READING_STATS.getCurrentStreakDays();
-  maxGoalStreak = READING_STATS.getMaxStreakDays();
   resetDayOrdinal = 0;
   resetDayBaselineMs = 0;
-
-  for (const auto& day : READING_STATS.getReadingDays()) {
-    if (day.readingMs >= DAILY_READING_GOAL_MS) {
-      lastGoalDayOrdinal = day.dayOrdinal;
-    }
-  }
+  refreshGoalDerivedProgressFromStats();
 
   evaluateProgress(false);
   markDirty();
+}
+
+bool AchievementsStore::refreshGoalDerivedProgressFromStats() {
+  const uint32_t newGoalDaysCount = countGoalDaysFromStats();
+  const uint32_t newCurrentGoalStreak = READING_STATS.getCurrentStreakDays();
+  const uint32_t newMaxGoalStreak = READING_STATS.getMaxStreakDays();
+
+  uint32_t newLastGoalDayOrdinal = 0;
+  for (const auto& day : READING_STATS.getReadingDays()) {
+    if (day.readingMs >= getDailyReadingGoalMs()) {
+      newLastGoalDayOrdinal = day.dayOrdinal;
+    }
+  }
+
+  const bool changed = goalDaysCount != newGoalDaysCount || currentGoalStreak != newCurrentGoalStreak ||
+                       maxGoalStreak != newMaxGoalStreak || lastGoalDayOrdinal != newLastGoalDayOrdinal;
+
+  goalDaysCount = newGoalDaysCount;
+  currentGoalStreak = newCurrentGoalStreak;
+  maxGoalStreak = newMaxGoalStreak;
+  lastGoalDayOrdinal = newLastGoalDayOrdinal;
+  return changed;
 }
 
 void AchievementsStore::reconcileFromCurrentStats() {
@@ -291,7 +305,7 @@ void AchievementsStore::recordSessionEnded(const ReadingSessionSnapshot& snapsho
   const uint32_t dayOrdinal =
       TimeUtils::isClockValid(referenceTimestamp) ? TimeUtils::getLocalDayOrdinal(referenceTimestamp) : 0;
   const uint64_t effectiveTodayReadingMs = getEffectiveTodayReadingMs(dayOrdinal);
-  if (dayOrdinal != 0 && effectiveTodayReadingMs >= DAILY_READING_GOAL_MS && lastGoalDayOrdinal != dayOrdinal) {
+  if (dayOrdinal != 0 && effectiveTodayReadingMs >= getDailyReadingGoalMs() && lastGoalDayOrdinal != dayOrdinal) {
     ++goalDaysCount;
     if (lastGoalDayOrdinal != 0 && lastGoalDayOrdinal + 1 == dayOrdinal) {
       ++currentGoalStreak;
@@ -404,6 +418,9 @@ bool AchievementsStore::loadFromFile() {
   }
 
   dirty = false;
+  if (refreshGoalDerivedProgressFromStats()) {
+    markDirty();
+  }
   evaluateProgress(false);
   if (dirty) {
     saveToFile();
@@ -460,15 +477,7 @@ void AchievementsStore::syncWithPreviousStats() {
   countedSessions = std::max(countedSessions, countSessionsFromStats());
   totalBookmarksAdded = std::max(totalBookmarksAdded, countCurrentBookmarksFromStats());
   longestSessionMs = std::max(longestSessionMs, findLongestSessionFromStats());
-  goalDaysCount = std::max(goalDaysCount, countGoalDaysFromStats());
-  currentGoalStreak = std::max(currentGoalStreak, READING_STATS.getCurrentStreakDays());
-  maxGoalStreak = std::max(maxGoalStreak, READING_STATS.getMaxStreakDays());
-
-  for (const auto& day : READING_STATS.getReadingDays()) {
-    if (day.readingMs >= DAILY_READING_GOAL_MS) {
-      lastGoalDayOrdinal = std::max(lastGoalDayOrdinal, day.dayOrdinal);
-    }
-  }
+  refreshGoalDerivedProgressFromStats();
 
   markDirty();
   evaluateProgress(false);

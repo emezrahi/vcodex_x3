@@ -2,6 +2,14 @@
 
 Brief firmware history for `crosspoint-vcodex`.
 
+## 1.1.3-vcodex
+
+- made `Daily Goal` configurable in `Settings > Apps` with `15 min / 30 min / 45 min / 60 min`
+- aligned `Goal Streak`, Home stats shortcut, Reading Stats cards and Heatmap logic with the selected goal
+- updated achievement goal-day and goal-streak progress so they stay coherent after changing the configured goal
+
+Version code: `2026032903`
+
 ## 1.1.2-vcodex
 
 - formalized firmware versioning and version code tracking

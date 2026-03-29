@@ -367,7 +367,8 @@ void ReadingStatsExtendedActivity::render(RenderLock&&) {
   const std::string last7DaysValue = formatDurationHm(READING_STATS.getRecentReadingMs(7));
   const std::string last30DaysValue = formatDurationHm(READING_STATS.getRecentReadingMs(30));
   const uint64_t todayReadingMs = READING_STATS.getTodayReadingMs();
-  const std::string dailyGoalValue = formatDurationHm(todayReadingMs) + " / " + formatDurationHm(DAILY_READING_GOAL_MS);
+  const std::string dailyGoalValue =
+      formatDurationHm(todayReadingMs) + " / " + formatDurationHm(getDailyReadingGoalMs());
   int annualReadingYear = 0;
   const auto annualReadingBars = getAnnualReadingBars(annualReadingYear);
 
@@ -395,7 +396,7 @@ void ReadingStatsExtendedActivity::render(RenderLock&&) {
                  tr(STR_MAX_STREAK), std::to_string(READING_STATS.getMaxStreakDays()));
   drawMetricCard(renderer, Rect{sidePadding, summaryTop + SUMMARY_CARD_HEIGHT + SUMMARY_GAP, cardWidth,
                                 SUMMARY_CARD_HEIGHT},
-                 tr(STR_DAILY_GOAL), dailyGoalValue, todayReadingMs >= DAILY_READING_GOAL_MS);
+                 tr(STR_DAILY_GOAL), dailyGoalValue, todayReadingMs >= getDailyReadingGoalMs());
   drawMetricCard(renderer,
                  Rect{sidePadding + cardWidth + SUMMARY_GAP, summaryTop + SUMMARY_CARD_HEIGHT + SUMMARY_GAP, cardWidth,
                       SUMMARY_CARD_HEIGHT},

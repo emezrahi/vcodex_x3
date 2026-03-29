@@ -4,7 +4,9 @@
 #include <string>
 #include <vector>
 
-inline constexpr uint64_t DAILY_READING_GOAL_MS = 30ULL * 60ULL * 1000ULL;
+#include "CrossPointSettings.h"
+
+inline uint64_t getDailyReadingGoalMs() { return SETTINGS.getDailyGoalMs(); }
 
 struct ReadingDayStats {
   uint32_t dayOrdinal = 0;
@@ -59,6 +61,7 @@ class ReadingStatsStore {
     uint64_t recent30ReadingMs = 0;
     uint32_t currentStreakDays = 0;
     uint32_t maxStreakDays = 0;
+    uint64_t goalReadingMs = 0;
   };
 
   struct SessionState {
