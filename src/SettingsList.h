@@ -66,8 +66,6 @@ inline const std::vector<SettingInfo>& getSettingsList() {
                         {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingStatsShortcut", StrId::STR_APPS),
       SettingInfo::Enum(StrId::STR_READING_HEATMAP, &CrossPointSettings::readingHeatmapShortcut,
                         {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingHeatmapShortcut", StrId::STR_APPS),
-      SettingInfo::Enum(StrId::STR_READING_TIMELINE, &CrossPointSettings::readingTimelineShortcut,
-                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingTimelineShortcut", StrId::STR_APPS),
       SettingInfo::Enum(StrId::STR_ACHIEVEMENTS, &CrossPointSettings::achievementsShortcut,
                         {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "achievementsShortcut", StrId::STR_APPS),
       SettingInfo::Enum(StrId::STR_IF_FOUND_RETURN_ME, &CrossPointSettings::ifFoundShortcut,

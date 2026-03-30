@@ -19,6 +19,7 @@
 #include "OtaUpdateActivity.h"
 #include "ReadingStatsStore.h"
 #include "SettingsList.h"
+#include "ShortcutLocationActivity.h"
 #include "ShortcutOrderActivity.h"
 #include "ShortcutVisibilityActivity.h"
 #include "StatusBarSettingsActivity.h"
@@ -211,6 +212,7 @@ void SettingsActivity::buildSettingsLists() {
   appSettings.push_back(SettingInfo::Action(StrId::STR_RESET_ACHIEVEMENTS, SettingAction::ResetAchievements));
   appSettings.push_back(SettingInfo::Action(StrId::STR_SYNC_WITH_PREV_STATS, SettingAction::SyncAchievementsFromStats));
   appSettings.push_back(SettingInfo::Section(StrId::STR_SHORTCUTS_SECTION));
+  appSettings.push_back(SettingInfo::Action(StrId::STR_SHORTCUT_LOCATION, SettingAction::ShortcutLocation));
   appSettings.push_back(SettingInfo::Action(StrId::STR_SHORTCUT_VISIBILITY, SettingAction::ShortcutVisibility));
   appSettings.push_back(SettingInfo::Action(StrId::STR_ORDER_HOME_SHORTCUTS, SettingAction::OrderHomeShortcuts));
   appSettings.push_back(SettingInfo::Action(StrId::STR_ORDER_APPS_SHORTCUTS, SettingAction::OrderAppsShortcuts));
@@ -403,6 +405,9 @@ void SettingsActivity::toggleCurrentSetting() {
         break;
       case SettingAction::TimeZone:
         startActivityForResult(std::make_unique<TimeZoneSelectActivity>(renderer, mappedInput), resultHandler);
+        break;
+      case SettingAction::ShortcutLocation:
+        startActivityForResult(std::make_unique<ShortcutLocationActivity>(renderer, mappedInput), resultHandler);
         break;
       case SettingAction::ShortcutVisibility:
         startActivityForResult(std::make_unique<ShortcutVisibilityActivity>(renderer, mappedInput), resultHandler);

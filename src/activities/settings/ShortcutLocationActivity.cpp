@@ -1,4 +1,4 @@
-#include "ShortcutVisibilityActivity.h"
+#include "ShortcutLocationActivity.h"
 
 #include <GfxRenderer.h>
 #include <I18n.h>
@@ -11,12 +11,15 @@
 #include "fontIds.h"
 
 namespace {
-const char* getVisibilityLabel(const ShortcutDefinition& definition) {
-  return getShortcutVisibility(definition) ? tr(STR_SHOW) : tr(STR_HIDDEN);
+const char* getLocationLabel(const ShortcutDefinition& definition) {
+  return static_cast<CrossPointSettings::SHORTCUT_LOCATION>(SETTINGS.*(definition.locationPtr)) ==
+                 CrossPointSettings::SHORTCUT_HOME
+             ? tr(STR_HOME_LOCATION)
+             : tr(STR_APPS);
 }
 }  // namespace
 
-void ShortcutVisibilityActivity::reloadEntries() {
+void ShortcutLocationActivity::reloadEntries() {
   entries.clear();
   entries.reserve(getShortcutDefinitions().size());
   for (const auto& definition : getShortcutDefinitions()) {
@@ -34,24 +37,26 @@ void ShortcutVisibilityActivity::reloadEntries() {
   }
 }
 
-void ShortcutVisibilityActivity::toggleSelectedEntry() {
+void ShortcutLocationActivity::toggleSelectedEntry() {
   if (selectedIndex < 0 || selectedIndex >= static_cast<int>(entries.size())) {
     return;
   }
 
-  auto& visible = getShortcutVisibilityRef(SETTINGS, *entries[selectedIndex]);
-  visible = visible == 0 ? 1 : 0;
+  auto* definition = entries[selectedIndex];
+  auto& location = SETTINGS.*(definition->locationPtr);
+  location = location == CrossPointSettings::SHORTCUT_HOME ? CrossPointSettings::SHORTCUT_APPS
+                                                           : CrossPointSettings::SHORTCUT_HOME;
   requestUpdate();
 }
 
-void ShortcutVisibilityActivity::onEnter() {
+void ShortcutLocationActivity::onEnter() {
   Activity::onEnter();
   reloadEntries();
   waitForConfirmRelease = mappedInput.isPressed(MappedInputManager::Button::Confirm);
   requestUpdate();
 }
 
-void ShortcutVisibilityActivity::loop() {
+void ShortcutLocationActivity::loop() {
   if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
     finish();
     return;
@@ -86,14 +91,14 @@ void ShortcutVisibilityActivity::loop() {
   });
 }
 
-void ShortcutVisibilityActivity::render(RenderLock&&) {
+void ShortcutLocationActivity::render(RenderLock&&) {
   renderer.clearScreen();
 
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
 
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_SHORTCUT_VISIBILITY));
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_SHORTCUT_LOCATION));
 
   const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
   const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing;
@@ -103,7 +108,7 @@ void ShortcutVisibilityActivity::render(RenderLock&&) {
   } else {
     GUI.drawList(renderer, Rect{0, contentTop, pageWidth, contentHeight}, static_cast<int>(entries.size()), selectedIndex,
                  [this](const int index) { return std::string(I18N.get(entries[index]->nameId)); }, nullptr, nullptr,
-                 [this](const int index) { return std::string(getVisibilityLabel(*entries[index])); }, true);
+                 [this](const int index) { return std::string(getLocationLabel(*entries[index])); }, true);
   }
 
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_TOGGLE), tr(STR_DIR_UP), tr(STR_DIR_DOWN));

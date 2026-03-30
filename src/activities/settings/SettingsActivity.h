@@ -24,6 +24,7 @@ enum class SettingAction {
   CheckForUpdates,
   Language,
   TimeZone,
+  ShortcutLocation,
   ShortcutVisibility,
   OrderHomeShortcuts,
   OrderAppsShortcuts,

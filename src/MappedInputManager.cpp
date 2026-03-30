@@ -114,7 +114,17 @@ bool MappedInputManager::mapButton(const Button button, bool (HalGPIO::*fn)(uint
 
 bool MappedInputManager::wasPressed(const Button button) const { return mapButton(button, &HalGPIO::wasPressed); }
 
-bool MappedInputManager::wasReleased(const Button button) const { return mapButton(button, &HalGPIO::wasReleased); }
+void MappedInputManager::armConfirmReleaseGuard() const { suppressConfirmReleaseUntilButtonUp = true; }
+
+bool MappedInputManager::wasReleased(const Button button) const {
+  if (button == Button::Confirm && suppressConfirmReleaseUntilButtonUp) {
+    if (!isPressed(Button::Confirm)) {
+      suppressConfirmReleaseUntilButtonUp = false;
+    }
+    return false;
+  }
+  return mapButton(button, &HalGPIO::wasReleased);
+}
 
 bool MappedInputManager::isPressed(const Button button) const { return mapButton(button, &HalGPIO::isPressed); }
 

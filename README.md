@@ -7,7 +7,7 @@ It keeps the strong CrossPoint base and adds a more polished day-to-day reading 
 - better Home workflow
 - configurable Home and Apps shortcuts
 - coherent date-based reading stats
-- heatmap and timeline views
+- heatmap and per-day views
 - achievements
 - built-in ReadMe guide on device
 - EPUB bookmarks with a global app
@@ -21,8 +21,8 @@ This project is **not affiliated with Xteink**.
 |---|---|
 | Base firmware | CrossPoint Reader |
 | Device | Xteink X4 |
-| Current release | `1.1.10-vcodex` |
-| Version code | `2026033002` |
+| Current release | `1.1.12-vcodex` |
+| Version code | `2026033004` |
 | Release notes | [CHANGELOG.md](./CHANGELOG.md) |
 | Recommended install | browser OTA fast flash |
 
@@ -45,17 +45,7 @@ For most users, this is the easiest way to install the firmware:
 ## Screenshots
 
 <p align="center">
-  <img src="./docs/images/Main.bmp" alt="Main" width="230" />
-  <img src="./docs/images/ReadingStats.bmp" alt="Reading Stats" width="230" />
-  <img src="./docs/images/ReadingStatsExtended.bmp" alt="Reading Stats Extended" width="230" />
-</p>
-<p align="center">
-  <img src="./docs/images/ReadingHeatmap.bmp" alt="Reading Heatmap" width="230" />
-  <img src="./docs/images/ReadingDay.bmp" alt="Reading Day" width="230" />
-  <img src="./docs/images/ReadingTimeline.bmp" alt="Reading Timeline" width="230" />
-</p>
-<p align="center">
-  <img src="./docs/images/ReadingStatsBook.bmp" alt="Reading Stats Book Detail" width="230" />
+  <img src="./docs/images/overview-v1.1.12.png" alt="crosspoint-vcodex overview" width="1000" />
 </p>
 
 ## What this fork adds
@@ -68,7 +58,6 @@ For most users, this is the easiest way to install the firmware:
 | `Reading Stats` | richer totals, started books, per-book detail and extended trends | [Reading analytics suite](#reading-analytics-suite) |
 | `Reading Heatmap` | monthly calendar view of reading intensity | [Reading analytics suite](#reading-analytics-suite) |
 | `Reading Day` | drill-down into one specific reading day | [Reading analytics suite](#reading-analytics-suite) |
-| `Reading Timeline` | recent-history view by day | [Reading analytics suite](#reading-analytics-suite) |
 | `Achievements` | console-style milestones and optional popups | [Achievements](#achievements) |
 | `ReadMe` | on-device quick guide for the main vCodex features | [ReadMe](#readme) |
 | `If found, please return me` | lost-device contact screen fed by `/if_found.txt` on the SD card | [If found, please return me](#if-found-please-return-me) |
@@ -86,7 +75,7 @@ If you just flashed the fork and want the main extras immediately:
 2. Connect to Wi-Fi and sync the date
 3. Open a book and read normally
 4. Open `Home > Stats` or `Apps > Reading Stats`
-5. Open `Apps > Reading Heatmap` or `Apps > Reading Timeline`
+5. Open `Apps > Reading Heatmap`
 
 That is enough to start using the core value of the fork: coherent day-based reading analytics on the X4.
 
@@ -103,6 +92,7 @@ The default Home menu is:
 
 Shortcuts can be managed from:
 
+- `Settings > Apps > Shortcuts > Location Home and Apps`
 - `Settings > Apps > Shortcuts > Visibility Home and Apps`
 - `Settings > Apps > Shortcuts > Order Home shortcuts`
 - `Settings > Apps > Shortcuts > Order Apps shortcuts`
@@ -110,7 +100,7 @@ Shortcuts can be managed from:
 Default shortcut placement:
 
 - `Home`: `Browse Files`, `Stats`, `Sync Day`
-- `Apps`: `Settings`, `Reading Stats`, `Reading Heatmap`, `Reading Timeline`, `Achievements`, `If found, please return me`, `ReadMe`, `Recent Books`, `Bookmarks`, `File Transfer`, `Sleep`
+- `Apps`: `Settings`, `Reading Stats`, `Reading Heatmap`, `Achievements`, `If found, please return me`, `ReadMe`, `Recent Books`, `Bookmarks`, `File Transfer`, `Sleep`
 
 `Apps` always remains available in `Home`, but it can be moved to a different position.
 
@@ -153,7 +143,6 @@ That means these views stay coherent with each other:
 - `Reading Stats`
 - `Reading Heatmap`
 - `Reading Day`
-- `Reading Timeline`
 - per-book stats detail
 
 ### What gets tracked
@@ -176,7 +165,7 @@ That means these views stay coherent with each other:
 - `Daily Goal` is configurable to `15 / 30 / 45 / 60 min`
 - `Goal Streak` depends on whether you completed the configured `Daily Goal`
 - `Reading Day` filters out books with less than `3 minutes` on that day
-- books inside `/ignore_stats/` and its subdirectories are excluded from stats, sessions, heatmap, timeline and achievement tracking
+- books inside `/ignore_stats/` and its subdirectories are excluded from stats, sessions, heatmap and achievement tracking
 
 ### Main views
 
@@ -186,7 +175,6 @@ That means these views stay coherent with each other:
 | `More Details` | wider trends and graphs |
 | `Reading Heatmap` | monthly calendar of reading intensity |
 | `Reading Day` | one-day detail view opened from the heatmap |
-| `Reading Timeline` | recent reading history by day |
 | `Per-book stats detail` | cover, progress, sessions, time and last read info for a single book |
 
 `Show after reading` can automatically open per-book stats detail when you exit a book, but only if the reading session was long enough to count as a real session.
@@ -405,7 +393,7 @@ Main options:
 | Date | `Display Day`, `Auto Sync Day`, `Date Format`, `Time Zone` |
 | Reading stats | `Daily Goal`, `Show after reading`, `Reset Reading Stats`, `Export Reading Stats`, `Import Reading Stats` |
 | Achievements | `Enable achievements`, `Achievement popups`, `Reset achievements`, `Sync with prev. stats` |
-| Navigation | `Shortcuts`, `Visibility Home and Apps`, `Order Home shortcuts`, `Order Apps shortcuts` |
+| Navigation | `Shortcuts`, `Location Home and Apps`, `Visibility Home and Apps`, `Order Home shortcuts`, `Order Apps shortcuts` |
 
 ## What requires Sync Day
 
@@ -417,7 +405,6 @@ That includes:
 - goal streak
 - max goal streak
 - heatmap
-- timeline
 - `today`
 - `7D`
 - `30D`
@@ -445,8 +432,8 @@ Important files include:
 
 Each firmware build exposes two identifiers:
 
-- `version`: the human-readable release line, currently `1.1.10-vcodex`
-- `version code`: a numeric build identifier, currently `2026033002`
+- `version`: the human-readable release line, currently `1.1.12-vcodex`
+- `version code`: a numeric build identifier, currently `2026033004`
 
 The boot screen shows both values, so you can identify exactly which firmware is installed on the device.
 For a brief release history, see [CHANGELOG.md](./CHANGELOG.md).

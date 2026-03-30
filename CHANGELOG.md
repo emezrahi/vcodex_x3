@@ -2,6 +2,14 @@
 
 Brief firmware history for `crosspoint-vcodex`.
 
+## 1.1.12-vcodex
+
+- removed `Reading Timeline` as a separate app and folded the workflow around `Reading Stats`, `Reading Heatmap` and `Reading Day`
+- split shortcut management into `Location Home and Apps` and a real `Visibility Home and Apps` with `Show / Hidden`
+- fixed double-open behavior more robustly by swallowing the inherited `Confirm` release when a new activity becomes active
+
+Version code: `2026033004`
+
 ## 1.1.10-vcodex
 
 - improved stability around `Settings > Apps` actions by removing redundant settings saves from export/sync flows and reducing write pressure while reordering shortcuts

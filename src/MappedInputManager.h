@@ -16,6 +16,7 @@ class MappedInputManager {
   explicit MappedInputManager(HalGPIO& gpio) : gpio(gpio) {}
 
   void update() const { gpio.update(); }
+  void armConfirmReleaseGuard() const;
   bool wasPressed(Button button) const;
   bool wasReleased(Button button) const;
   bool isPressed(Button button) const;
@@ -28,6 +29,7 @@ class MappedInputManager {
 
  private:
   HalGPIO& gpio;
+  mutable bool suppressConfirmReleaseUntilButtonUp = false;
 
   bool mapButton(Button button, bool (HalGPIO::*fn)(uint8_t) const) const;
 };

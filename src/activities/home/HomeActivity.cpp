@@ -26,7 +26,6 @@
 #include "activities/apps/ReadMeActivity.h"
 #include "activities/apps/ReadingHeatmapActivity.h"
 #include "activities/apps/ReadingStatsActivity.h"
-#include "activities/apps/ReadingTimelineActivity.h"
 #include "activities/apps/SleepAppActivity.h"
 #include "activities/apps/SyncDayActivity.h"
 #include "components/UITheme.h"
@@ -82,13 +81,20 @@ std::string getReadingStatsShortcutSubtitle() {
 
 std::vector<HomeShortcutEntry> getHomeShortcutEntries(const bool hasOpdsUrl) {
   std::vector<HomeShortcutEntry> entries;
-  for (const auto& shortcut : getShortcutOrderEntries(ShortcutOrderGroup::Home)) {
-    if (shortcut.isAppsHub) {
-      entries.push_back(HomeShortcutEntry{nullptr, true, false});
-    } else {
-      entries.push_back(HomeShortcutEntry{shortcut.definition});
+  entries.push_back(HomeShortcutEntry{nullptr, true, false});
+
+  for (const auto& definition : getShortcutDefinitions()) {
+    const auto location = static_cast<CrossPointSettings::SHORTCUT_LOCATION>(SETTINGS.*(definition.locationPtr));
+    if (location == CrossPointSettings::SHORTCUT_HOME && getShortcutVisibility(definition)) {
+      entries.push_back(HomeShortcutEntry{&definition});
     }
   }
+
+  std::stable_sort(entries.begin(), entries.end(), [](const HomeShortcutEntry& lhs, const HomeShortcutEntry& rhs) {
+    const uint8_t lhsOrder = lhs.isAppsHub ? SETTINGS.appsHubShortcutOrder : getShortcutOrder(*lhs.definition);
+    const uint8_t rhsOrder = rhs.isAppsHub ? SETTINGS.appsHubShortcutOrder : getShortcutOrder(*rhs.definition);
+    return lhsOrder < rhsOrder;
+  });
 
   if (hasOpdsUrl) {
     entries.push_back(HomeShortcutEntry{nullptr, false, true});
@@ -326,10 +332,6 @@ void HomeActivity::loop() {
           break;
         case ShortcutId::ReadingHeatmap:
           startActivityForResult(std::make_unique<ReadingHeatmapActivity>(renderer, mappedInput),
-                                 [this](const ActivityResult&) { requestUpdate(); });
-          break;
-        case ShortcutId::ReadingTimeline:
-          startActivityForResult(std::make_unique<ReadingTimelineActivity>(renderer, mappedInput),
                                  [this](const ActivityResult&) { requestUpdate(); });
           break;
         case ShortcutId::Achievements:
