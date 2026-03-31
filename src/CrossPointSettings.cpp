@@ -26,6 +26,13 @@ constexpr uint8_t SETTINGS_FILE_VERSION = 1;
 constexpr char SETTINGS_FILE_BIN[] = "/.crosspoint/settings.bin";
 constexpr char SETTINGS_FILE_JSON[] = "/.crosspoint/settings.json";
 constexpr char SETTINGS_FILE_BAK[] = "/.crosspoint/settings.bin.bak";
+constexpr uint8_t LEGACY_FONT_SIZE_COUNT = 4;
+
+uint8_t migrateLegacyFontSize(const uint8_t legacyFontSize) {
+  return legacyFontSize < LEGACY_FONT_SIZE_COUNT
+             ? static_cast<uint8_t>(legacyFontSize + 1)
+             : static_cast<uint8_t>(CrossPointSettings::MEDIUM);
+}
 
 // Convert legacy front button layout into explicit logical->hardware mapping.
 void applyLegacyFrontButtonLayout(CrossPointSettings& settings) {
@@ -152,7 +159,11 @@ bool CrossPointSettings::loadFromBinaryFile() {
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, fontFamily, FONT_FAMILY_COUNT);
     if (++settingsRead >= fileSettingsCount) break;
-    readAndValidate(inputFile, fontSize, FONT_SIZE_COUNT);
+    {
+      uint8_t legacyFontSize = static_cast<uint8_t>(MEDIUM - 1);
+      serialization::readPod(inputFile, legacyFontSize);
+      fontSize = migrateLegacyFontSize(legacyFontSize);
+    }
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, lineSpacing, LINE_COMPRESSION_COUNT);
     if (++settingsRead >= fileSettingsCount) break;
@@ -312,6 +323,8 @@ int CrossPointSettings::getReaderFontId() const {
     case BOOKERLY:
     default:
       switch (fontSize) {
+        case X_SMALL:
+          return BOOKERLY_10_FONT_ID;
         case SMALL:
           return BOOKERLY_12_FONT_ID;
         case MEDIUM:
@@ -324,6 +337,8 @@ int CrossPointSettings::getReaderFontId() const {
       }
     case NOTOSANS:
       switch (fontSize) {
+        case X_SMALL:
+          return NOTOSANS_10_FONT_ID;
         case SMALL:
           return NOTOSANS_12_FONT_ID;
         case MEDIUM:
@@ -336,6 +351,8 @@ int CrossPointSettings::getReaderFontId() const {
       }
     case OPENDYSLEXIC:
       switch (fontSize) {
+        case X_SMALL:
+          return OPENDYSLEXIC_7_FONT_ID;
         case SMALL:
           return OPENDYSLEXIC_8_FONT_ID;
         case MEDIUM:

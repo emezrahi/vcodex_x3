@@ -1,6 +1,6 @@
-# crosspoint-vcodex
+# cpr-vcodex
 
-`crosspoint-vcodex` is a reading-focused fork of **CrossPoint Reader** for the **Xteink X4**.
+`cpr-vcodex` builds on the great work of **CrossPoint Reader**. This firmware line starts from **CrossPoint Reader 1.1.1** and has been extended and improved with the help of **OpenAI Codex** for the **Xteink X4**.
 
 It keeps the strong CrossPoint base and adds a more polished day-to-day reading experience:
 
@@ -21,8 +21,8 @@ This project is **not affiliated with Xteink**.
 |---|---|
 | Base firmware | CrossPoint Reader |
 | Device | Xteink X4 |
-| Current release | `1.1.12-vcodex` |
-| Version code | `2026033004` |
+| Current release | `1.1.13-vcodex` |
+| Version code | `2026033101` |
 | Release notes | [CHANGELOG.md](./CHANGELOG.md) |
 | Recommended install | browser OTA fast flash |
 
@@ -30,7 +30,7 @@ This project is **not affiliated with Xteink**.
 
 For most users, this is the easiest way to install the firmware:
 
-1. Download the latest `crosspoint-vcodex` firmware from [GitHub Releases](https://github.com/franssjz/crosspoint-reader-codex/releases).
+1. Download the latest `cpr-vcodex` firmware from [GitHub Releases](https://github.com/franssjz/crosspoint-reader-codex/releases).
 2. Turn on and unlock your Xteink X4.
 3. Open [xteink.dve.al](https://xteink.dve.al/).
 4. In `OTA fast flash controls`, select the downloaded firmware file.
@@ -45,7 +45,7 @@ For most users, this is the easiest way to install the firmware:
 ## Screenshots
 
 <p align="center">
-  <img src="./docs/images/overview-v1.1.12.png" alt="crosspoint-vcodex overview" width="1000" />
+  <img src="./docs/images/overview-v1.1.13.png" alt="cpr-vcodex overview" width="1000" />
 </p>
 
 ## What this fork adds
@@ -59,7 +59,7 @@ For most users, this is the easiest way to install the firmware:
 | `Reading Heatmap` | monthly calendar view of reading intensity | [Reading analytics suite](#reading-analytics-suite) |
 | `Reading Day` | drill-down into one specific reading day | [Reading analytics suite](#reading-analytics-suite) |
 | `Achievements` | console-style milestones and optional popups | [Achievements](#achievements) |
-| `ReadMe` | on-device quick guide for the main vCodex features | [ReadMe](#readme) |
+| `ReadMe` | on-device quick guide for the main CPR-vCodex features | [ReadMe](#readme) |
 | `If found, please return me` | lost-device contact screen fed by `/if_found.txt` on the SD card | [If found, please return me](#if-found-please-return-me) |
 | `Bookmarks` | EPUB bookmarks plus a global bookmarks app | [Bookmarks](#bookmarks) |
 | `Sleep tools` | folder selection, preview and sequential/shuffle behavior | [Sleep](#sleep) |
@@ -432,8 +432,8 @@ Important files include:
 
 Each firmware build exposes two identifiers:
 
-- `version`: the human-readable release line, currently `1.1.12-vcodex`
-- `version code`: a numeric build identifier, currently `2026033004`
+- `version`: the human-readable release line, currently `1.1.13-vcodex`
+- `version code`: a numeric build identifier, currently `2026033101`
 
 The boot screen shows both values, so you can identify exactly which firmware is installed on the device.
 For a brief release history, see [CHANGELOG.md](./CHANGELOG.md).
@@ -463,10 +463,10 @@ Clone and build:
 
 ```sh
 git clone --recursive <your-fork-url>
-cd crosspoint-vcodex
+cd crosspoint-reader-codex
 pio run -e vcodex_release
 ```
 
 ---
 
-`crosspoint-vcodex` keeps the strong CrossPoint Reader base, but turns it into a more complete reading product for people who care about habit tracking, progress visibility, and practical reader UX.
+`cpr-vcodex` keeps the strong CrossPoint Reader base, but turns it into a more complete reading product for people who care about habit tracking, progress visibility, and practical reader UX.

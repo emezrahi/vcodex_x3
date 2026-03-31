@@ -1,4 +1,4 @@
-# crosspoint-vcodex notes
+# cpr-vcodex notes
 
 `READING_CUSTOM.md` used to contain the fork-specific documentation.
 
@@ -8,7 +8,7 @@ That content is now maintained in:
 
 Use the README as the single source of truth for:
 
-- what `crosspoint-vcodex` adds on top of CrossPoint Reader
+- what `cpr-vcodex` adds on top of CrossPoint Reader
 - how `Sync Day` works
 - how `Reading Stats`, `Heatmap`, and `Timeline` work
 - how to use the extra apps and fork-specific settings

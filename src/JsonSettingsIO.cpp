@@ -21,6 +21,8 @@
 #include "util/TimeZoneRegistry.h"
 
 namespace {
+constexpr uint8_t FONT_SIZE_SCHEMA_VERSION = 2;
+
 class HalFileStream : public Stream {
  public:
   explicit HalFileStream(HalFile& file) : file(file) {}
@@ -218,6 +220,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["bookmarksShortcutVisible"] = s.bookmarksShortcutVisible;
   doc["fileTransferShortcutVisible"] = s.fileTransferShortcutVisible;
   doc["sleepShortcutVisible"] = s.sleepShortcutVisible;
+  doc["fontSizeSchemaVersion"] = FONT_SIZE_SCHEMA_VERSION;
 
   return saveJsonDocumentToFile("CPS", path, doc);
 }
@@ -285,6 +288,15 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   }
 
   // Front button remap — managed by RemapFrontButtons sub-activity, not in SettingsList.
+  const uint8_t fontSizeSchemaVersion = doc["fontSizeSchemaVersion"] | static_cast<uint8_t>(0);
+  if (fontSizeSchemaVersion < FONT_SIZE_SCHEMA_VERSION && !doc["fontSize"].isNull()) {
+    const uint8_t legacyFontSize = doc["fontSize"] | static_cast<uint8_t>(CrossPointSettings::MEDIUM - 1);
+    if (legacyFontSize < static_cast<uint8_t>(CrossPointSettings::EXTRA_LARGE)) {
+      s.fontSize = static_cast<uint8_t>(legacyFontSize + 1);
+      if (needsResave) *needsResave = true;
+    }
+  }
+
   using S = CrossPointSettings;
   s.frontButtonBack =
       clamp(doc["frontButtonBack"] | (uint8_t)S::FRONT_HW_BACK, S::FRONT_BUTTON_HARDWARE_COUNT, S::FRONT_HW_BACK);

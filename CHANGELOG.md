@@ -1,6 +1,14 @@
 # Changelog
 
-Brief firmware history for `crosspoint-vcodex`.
+Brief firmware history for `cpr-vcodex`.
+
+## 1.1.13-vcodex
+
+- renamed the documented firmware line from `crosspoint-vcodex` to `cpr-vcodex`
+- refreshed the main README intro to make the `CrossPoint Reader 1.1.1` base and the Codex-assisted evolution of the fork explicit
+- bumped firmware release metadata to `1.1.13-vcodex`
+
+Version code: `2026033101`
 
 ## 1.1.12-vcodex
 
