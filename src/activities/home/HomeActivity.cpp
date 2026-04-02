@@ -28,12 +28,14 @@
 #include "activities/apps/ReadingStatsActivity.h"
 #include "activities/apps/SleepAppActivity.h"
 #include "activities/apps/SyncDayActivity.h"
+#include "activities/util/ConfirmationActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/HeaderDateUtils.h"
 #include "util/ShortcutRegistry.h"
 
 namespace {
+constexpr unsigned long RECENT_BOOK_LONG_PRESS_MS = 1000;
 constexpr int HOME_SHORTCUT_PAGE_SIZE = 4;
 
 struct HomeShortcutEntry {
@@ -77,6 +79,10 @@ std::string getReadingStatsShortcutSubtitle() {
   const std::string todayValue = formatDurationHmCompact(todayReadingMs);
   const std::string goalValue = formatDurationHmCompact(getDailyReadingGoalMs());
   return todayValue + " / " + goalValue + " | " + std::to_string(READING_STATS.getCurrentStreakDays());
+}
+
+std::string getRecentBookConfirmationLabel(const RecentBook& book) {
+  return !book.title.empty() ? book.title : book.path;
 }
 
 std::vector<HomeShortcutEntry> getHomeShortcutEntries(const bool hasOpdsUrl) {
@@ -301,6 +307,36 @@ void HomeActivity::loop() {
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     if (selectorIndex < recentBooks.size()) {
+      if (mappedInput.getHeldTime() >= RECENT_BOOK_LONG_PRESS_MS) {
+        const RecentBook selectedBook = recentBooks[selectorIndex];
+        const int currentSelection = selectorIndex;
+        startActivityForResult(
+            std::make_unique<ConfirmationActivity>(renderer, mappedInput, tr(STR_DELETE_FROM_RECENTS),
+                                                   getRecentBookConfirmationLabel(selectedBook)),
+            [this, selectedBook, currentSelection](const ActivityResult& result) {
+              if (result.isCancelled) {
+                requestUpdate();
+                return;
+              }
+
+              if (RECENT_BOOKS.removeBook(selectedBook.path)) {
+                const auto& metrics = UITheme::getInstance().getMetrics();
+                loadRecentBooks(metrics.homeRecentBooksCount);
+                if (recentBooks.empty()) {
+                  selectorIndex = 0;
+                } else if (currentSelection >= static_cast<int>(recentBooks.size())) {
+                  selectorIndex = static_cast<int>(recentBooks.size()) - 1;
+                } else {
+                  selectorIndex = currentSelection;
+                }
+                coverRendered = false;
+                freeCoverBuffer();
+              }
+              requestUpdate(true);
+            });
+        return;
+      }
+
       onSelectBook(recentBooks[selectorIndex].path);
       return;
     }

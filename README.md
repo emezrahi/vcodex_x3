@@ -8,7 +8,7 @@
 ## Screenshots
 
 <p align="center">
-  <img src="./docs/images/vcodex1.1.13.png" alt="cpr-vcodex overview" width="1000" />
+  <img src="./docs/images/screenshots.png" alt="cpr-vcodex overview" width="1000" />
 </p>
 
 # cpr-vcodex
@@ -34,8 +34,8 @@ This project is **not affiliated with Xteink**.
 |---|---|
 | Base firmware | CrossPoint Reader |
 | Device | Xteink X4 |
-| Current release | `1.1.16-vcodex` |
-| Version code | `2026040102` |
+| Current release | `1.1.17-vcodex` |
+| Version code | `2026040201` |
 | Release notes | [CHANGELOG.md](./CHANGELOG.md) |
 | Recommended install | browser OTA fast flash |
 
@@ -434,13 +434,14 @@ Important files include:
 - `/.crosspoint/achievements.json`
 - per-book `bookmarks.bin` files inside the EPUB cache path
 - `/exports/*.json` for reading stats export files
+- `/.crosspoint/recent.json` for recent books history
 
 ## Versioning
 
 Each firmware build exposes two identifiers:
 
-- `version`: the human-readable release line, currently `1.1.16-vcodex`
-- `version code`: a numeric build identifier, currently `2026040102`
+- `version`: the human-readable release line, currently `1.1.17-vcodex`
+- `version code`: a numeric build identifier, currently `2026040201`
 
 The boot screen shows both values, so you can identify exactly which firmware is installed on the device.
 For a brief release history, see [CHANGELOG.md](./CHANGELOG.md).

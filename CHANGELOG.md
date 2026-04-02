@@ -2,6 +2,14 @@
 
 Brief firmware history for `cpr-vcodex`.
 
+## 1.1.17-vcodex
+
+- added long-press removal with confirmation for recent books in both `Home` and `Apps > Recent Books`
+- kept recent-book removal limited to history only, without deleting the actual book file
+- persisted recent-book removals cleanly through `/.crosspoint/recent.json`
+
+Version code: `2026040201`
+
 ## 1.1.16-vcodex
 
 - reduced sleep-screen flashing by switching the normal sleep rendering paths back to `HALF_REFRESH`

@@ -8,11 +8,17 @@
 
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
+#include "activities/util/ConfirmationActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
 namespace {
 constexpr unsigned long GO_HOME_MS = 1000;
+constexpr unsigned long RECENT_BOOK_LONG_PRESS_MS = 1000;
+
+std::string getRecentBookConfirmationLabel(const RecentBook& book) {
+  return !book.title.empty() ? book.title : book.path;
+}
 }  // namespace
 
 void RecentBooksActivity::loadRecentBooks() {
@@ -49,6 +55,33 @@ void RecentBooksActivity::loop() {
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     if (!recentBooks.empty() && selectorIndex < static_cast<int>(recentBooks.size())) {
+      if (mappedInput.getHeldTime() >= RECENT_BOOK_LONG_PRESS_MS) {
+        const RecentBook selectedBook = recentBooks[selectorIndex];
+        const size_t currentSelection = selectorIndex;
+        startActivityForResult(
+            std::make_unique<ConfirmationActivity>(renderer, mappedInput, tr(STR_DELETE_FROM_RECENTS),
+                                                   getRecentBookConfirmationLabel(selectedBook)),
+            [this, selectedBook, currentSelection](const ActivityResult& result) {
+              if (result.isCancelled) {
+                requestUpdate();
+                return;
+              }
+
+              if (RECENT_BOOKS.removeBook(selectedBook.path)) {
+                loadRecentBooks();
+                if (recentBooks.empty()) {
+                  selectorIndex = 0;
+                } else if (currentSelection >= recentBooks.size()) {
+                  selectorIndex = recentBooks.size() - 1;
+                } else {
+                  selectorIndex = currentSelection;
+                }
+              }
+              requestUpdate(true);
+            });
+        return;
+      }
+
       LOG_DBG("RBA", "Selected recent book: %s", recentBooks[selectorIndex].path.c_str());
       onSelectBook(recentBooks[selectorIndex].path);
       return;
