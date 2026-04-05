@@ -10,6 +10,7 @@ Brief firmware history for `cpr-vcodex`.
 - added a global `Dark Mode` toggle in `Settings > Display`, implemented centrally in the renderer so UI text goes white-on-black while book images keep their original polarity
 - added `Text Darkness` for anti-aliased reader text, adapted from the [`crosspet`](https://github.com/trilwu/crosspet) fork
 - added `Lexend` as a reader font family, adapted from the [`crosspet`](https://github.com/trilwu/crosspet) fork
+- switched fork OTA metadata from the GitHub Releases API to a simple repo manifest (`ota.json`) to avoid device-side failures reaching `api.github.com`
 
 Version code: `2026040504`
 

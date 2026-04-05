@@ -39,6 +39,8 @@ This project is **not affiliated with Xteink**.
 | Release notes | [CHANGELOG.md](./CHANGELOG.md) |
 | Recommended install | browser OTA fast flash |
 
+The in-device `Update cpr-vCodex` feature reads a lightweight [`ota.json`](./ota.json) manifest from the repo instead of querying the GitHub Releases API directly.
+
 ## Easy installation
 
 For most users, this is the easiest way to install the firmware:

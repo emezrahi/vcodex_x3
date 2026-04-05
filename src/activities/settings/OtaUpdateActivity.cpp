@@ -9,6 +9,8 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "network/OtaUpdater.h"
+#include "CrossPointState.h"
+#include "util/TimeUtils.h"
 
 namespace {
 constexpr char kUpdateCprVcodexLabel[] = "Update cpr-vCodex";
@@ -29,9 +31,28 @@ void OtaUpdateActivity::onWifiSelectionComplete(const bool success) {
   }
   requestUpdateAndWait();
 
+  TimeUtils::syncTimeWithNtp();
+  const uint32_t currentValidTimestamp = TimeUtils::getCurrentValidTimestamp();
+  if (currentValidTimestamp > 0) {
+    APP_STATE.lastKnownValidTimestamp = std::max(APP_STATE.lastKnownValidTimestamp, currentValidTimestamp);
+    APP_STATE.saveToFile();
+  }
+
+  if (!TimeUtils::isClockValid()) {
+    LOG_ERR("OTA", "Clock is invalid after NTP sync");
+    errorMessage = "Time sync failed. Run Sync Day first.";
+    {
+      RenderLock lock(*this);
+      state = FAILED;
+    }
+    requestUpdate();
+    return;
+  }
+
   const auto res = updater.checkForUpdate();
   if (res != OtaUpdater::OK) {
     LOG_DBG("OTA", "Update check failed: %d", res);
+    errorMessage = updater.getLastErrorMessage();
     {
       RenderLock lock(*this);
       state = FAILED;
@@ -71,6 +92,7 @@ void OtaUpdateActivity::onExit() {
   Activity::onExit();
 
   // Turn off wifi
+  TimeUtils::stopNtp();
   WiFi.disconnect(false);  // false = don't erase credentials, send disconnect frame
   delay(100);              // Allow disconnect frame to be sent
   WiFi.mode(WIFI_OFF);
@@ -132,6 +154,16 @@ void OtaUpdateActivity::render(RenderLock&&) {
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   } else if (state == FAILED) {
     renderer.drawCenteredText(UI_10_FONT_ID, top, tr(STR_UPDATE_FAILED), true, EpdFontFamily::BOLD);
+    const char* detailText = !errorMessage.empty() ? errorMessage.c_str() : updater.getLastErrorMessage().c_str();
+    if (detailText[0] != '\0') {
+      const auto lines = renderer.wrappedText(UI_10_FONT_ID, detailText, pageWidth - metrics.contentSidePadding * 2, 2,
+                                              EpdFontFamily::REGULAR);
+      int detailY = top + height + metrics.verticalSpacing;
+      for (const auto& line : lines) {
+        renderer.drawCenteredText(UI_10_FONT_ID, detailY, line.c_str());
+        detailY += height + 2;
+      }
+    }
     const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   } else if (state == FINISHED) {
