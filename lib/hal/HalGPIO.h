@@ -23,6 +23,9 @@ class HalGPIO {
   InputManager inputMgr;
 #endif
 
+  bool lastUsbConnected = false;
+  bool usbStateChanged = false;
+
  public:
   HalGPIO() = default;
 
@@ -40,6 +43,7 @@ class HalGPIO {
 
   // Check if USB is connected
   bool isUsbConnected() const;
+  bool wasUsbStateChanged() const;
 
   enum class WakeupReason { PowerButton, AfterFlash, AfterUSBPower, Other };
 
@@ -54,3 +58,5 @@ class HalGPIO {
   static constexpr uint8_t BTN_DOWN = 5;
   static constexpr uint8_t BTN_POWER = 6;
 };
+
+extern HalGPIO gpio;

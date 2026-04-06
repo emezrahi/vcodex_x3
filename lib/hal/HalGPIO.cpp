@@ -5,9 +5,16 @@ void HalGPIO::begin() {
   inputMgr.begin();
   SPI.begin(EPD_SCLK, SPI_MISO, EPD_MOSI, EPD_CS);
   pinMode(UART0_RXD, INPUT);
+  lastUsbConnected = isUsbConnected();
+  usbStateChanged = false;
 }
 
-void HalGPIO::update() { inputMgr.update(); }
+void HalGPIO::update() {
+  inputMgr.update();
+  const bool connected = isUsbConnected();
+  usbStateChanged = (connected != lastUsbConnected);
+  lastUsbConnected = connected;
+}
 
 bool HalGPIO::isPressed(uint8_t buttonIndex) const { return inputMgr.isPressed(buttonIndex); }
 
@@ -25,6 +32,8 @@ bool HalGPIO::isUsbConnected() const {
   // U0RXD/GPIO20 reads HIGH when USB is connected
   return digitalRead(UART0_RXD) == HIGH;
 }
+
+bool HalGPIO::wasUsbStateChanged() const { return usbStateChanged; }
 
 HalGPIO::WakeupReason HalGPIO::getWakeupReason() const {
   const bool usbConnected = isUsbConnected();

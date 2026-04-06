@@ -5,6 +5,7 @@
 #include <HalStorage.h>
 #include <Logging.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 
@@ -35,13 +36,40 @@ void drawBatteryIcon(const GfxRenderer& renderer, int x, int y, int battWidth, i
   renderer.drawPixel(x + battWidth - 1, y + rectHeight - 4);
   renderer.drawLine(x + battWidth - 0, y + 4, x + battWidth - 0, y + rectHeight - 5);
 
+  const bool charging = gpio.isUsbConnected();
+
   // The +1 is to round up, so that we always fill at least one pixel
-  int filledWidth = percentage * (battWidth - 5) / 100 + 1;
-  if (filledWidth > battWidth - 5) {
-    filledWidth = battWidth - 5;  // Ensure we don't overflow
+  const int maxFillWidth = battWidth - 5;
+  const int fillHeight = rectHeight - 4;
+  if (maxFillWidth <= 0 || fillHeight <= 0) {
+    return;
+  }
+  int filledWidth = percentage * maxFillWidth / 100 + 1;
+  if (filledWidth > maxFillWidth) {
+    filledWidth = maxFillWidth;
   }
 
-  renderer.fillRect(x + 2, y + 2, filledWidth, rectHeight - 4);
+  // When charging, ensure minimum fill so lightning bolt is fully visible
+  constexpr int minFillForBolt = 8;
+  if (charging && filledWidth < minFillForBolt) {
+    filledWidth = std::min(minFillForBolt, maxFillWidth);
+  }
+
+  renderer.fillRect(x + 2, y + 2, filledWidth, fillHeight);
+
+  // Draw lightning bolt when charging (white/inverted on black fill for visibility)
+  if (charging) {
+    const int boltX = x + 4;
+    const int boltY = y + 2;
+    renderer.drawLine(boltX + 4, boltY + 0, boltX + 5, boltY + 0, false);
+    renderer.drawLine(boltX + 3, boltY + 1, boltX + 4, boltY + 1, false);
+    renderer.drawLine(boltX + 2, boltY + 2, boltX + 5, boltY + 2, false);
+    renderer.drawLine(boltX + 3, boltY + 3, boltX + 4, boltY + 3, false);
+    renderer.drawLine(boltX + 2, boltY + 4, boltX + 3, boltY + 4, false);
+    renderer.drawLine(boltX + 1, boltY + 5, boltX + 4, boltY + 5, false);
+    renderer.drawLine(boltX + 2, boltY + 6, boltX + 3, boltY + 6, false);
+    renderer.drawLine(boltX + 1, boltY + 7, boltX + 2, boltY + 7, false);
+  }
 }
 }  // namespace
 
@@ -136,48 +164,36 @@ void BaseTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* top
   constexpr int buttonWidth = BaseMetrics::values.sideButtonHintsWidth;  // Width on screen (height when rotated)
   constexpr int buttonHeight = 80;                                       // Height on screen (width when rotated)
   constexpr int buttonX = 4;                                             // Distance from right edge
-  // Position for the button group - buttons share a border so they're adjacent
-  constexpr int topButtonY = 345;  // Top button position
+  constexpr int topButtonY = 345;                                        // Top button position
 
   const char* labels[] = {topBtn, bottomBtn};
-
-  // Draw the shared border for both buttons as one unit
   const int x = screenWidth - buttonX - buttonWidth;
 
-  // Draw top button outline (3 sides, bottom open)
   if (topBtn != nullptr && topBtn[0] != '\0') {
-    renderer.drawLine(x, topButtonY, x + buttonWidth - 1, topButtonY);                                       // Top
-    renderer.drawLine(x, topButtonY, x, topButtonY + buttonHeight - 1);                                      // Left
-    renderer.drawLine(x + buttonWidth - 1, topButtonY, x + buttonWidth - 1, topButtonY + buttonHeight - 1);  // Right
+    renderer.drawLine(x, topButtonY, x + buttonWidth - 1, topButtonY);
+    renderer.drawLine(x, topButtonY, x, topButtonY + buttonHeight - 1);
+    renderer.drawLine(x + buttonWidth - 1, topButtonY, x + buttonWidth - 1, topButtonY + buttonHeight - 1);
   }
 
-  // Draw shared middle border
   if ((topBtn != nullptr && topBtn[0] != '\0') || (bottomBtn != nullptr && bottomBtn[0] != '\0')) {
-    renderer.drawLine(x, topButtonY + buttonHeight, x + buttonWidth - 1, topButtonY + buttonHeight);  // Shared border
+    renderer.drawLine(x, topButtonY + buttonHeight, x + buttonWidth - 1, topButtonY + buttonHeight);
   }
 
-  // Draw bottom button outline (3 sides, top is shared)
   if (bottomBtn != nullptr && bottomBtn[0] != '\0') {
-    renderer.drawLine(x, topButtonY + buttonHeight, x, topButtonY + 2 * buttonHeight - 1);  // Left
+    renderer.drawLine(x, topButtonY + buttonHeight, x, topButtonY + 2 * buttonHeight - 1);
     renderer.drawLine(x + buttonWidth - 1, topButtonY + buttonHeight, x + buttonWidth - 1,
-                      topButtonY + 2 * buttonHeight - 1);  // Right
+                      topButtonY + 2 * buttonHeight - 1);
     renderer.drawLine(x, topButtonY + 2 * buttonHeight - 1, x + buttonWidth - 1,
-                      topButtonY + 2 * buttonHeight - 1);  // Bottom
+                      topButtonY + 2 * buttonHeight - 1);
   }
 
-  // Draw text for each button
   for (int i = 0; i < 2; i++) {
     if (labels[i] != nullptr && labels[i][0] != '\0') {
       const int y = topButtonY + i * buttonHeight;
-
-      // Draw rotated text centered in the button
       const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
       const int textHeight = renderer.getTextHeight(SMALL_FONT_ID);
-
-      // Center the rotated text in the button
       const int textX = x + (buttonWidth - textHeight) / 2;
       const int textY = y + (buttonHeight + textWidth) / 2;
-
       renderer.drawTextRotated90CW(SMALL_FONT_ID, textX, textY, labels[i]);
     }
   }
