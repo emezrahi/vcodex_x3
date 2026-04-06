@@ -9,7 +9,6 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "network/OtaUpdater.h"
-#include "CrossPointState.h"
 #include "util/TimeUtils.h"
 
 namespace {
@@ -25,29 +24,16 @@ void OtaUpdateActivity::onWifiSelectionComplete(const bool success) {
 
   LOG_DBG("OTA", "WiFi connected, checking for update");
 
+  if (!TimeUtils::isClockValid()) {
+    LOG_DBG("OTA", "Clock invalid, syncing time before HTTPS OTA");
+    TimeUtils::syncTimeWithNtp(5000);
+  }
+
   {
     RenderLock lock(*this);
     state = CHECKING_FOR_UPDATE;
   }
   requestUpdateAndWait();
-
-  TimeUtils::syncTimeWithNtp();
-  const uint32_t currentValidTimestamp = TimeUtils::getCurrentValidTimestamp();
-  if (currentValidTimestamp > 0) {
-    APP_STATE.lastKnownValidTimestamp = std::max(APP_STATE.lastKnownValidTimestamp, currentValidTimestamp);
-    APP_STATE.saveToFile();
-  }
-
-  if (!TimeUtils::isClockValid()) {
-    LOG_ERR("OTA", "Clock is invalid after NTP sync");
-    errorMessage = "Time sync failed. Run Sync Day first.";
-    {
-      RenderLock lock(*this);
-      state = FAILED;
-    }
-    requestUpdate();
-    return;
-  }
 
   const auto res = updater.checkForUpdate();
   if (res != OtaUpdater::OK) {
@@ -92,7 +78,6 @@ void OtaUpdateActivity::onExit() {
   Activity::onExit();
 
   // Turn off wifi
-  TimeUtils::stopNtp();
   WiFi.disconnect(false);  // false = don't erase credentials, send disconnect frame
   delay(100);              // Allow disconnect frame to be sent
   WiFi.mode(WIFI_OFF);

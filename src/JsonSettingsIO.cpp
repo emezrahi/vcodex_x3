@@ -297,6 +297,11 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
       if (needsResave) *needsResave = true;
     }
   }
+  const uint8_t rawFontFamily = doc["fontFamily"] | s.fontFamily;
+  if (rawFontFamily >= static_cast<uint8_t>(CrossPointSettings::FONT_FAMILY_COUNT)) {
+    s.fontFamily = CrossPointSettings::BOOKERLY;
+    if (needsResave) *needsResave = true;
+  }
 
   using S = CrossPointSettings;
   s.frontButtonBack =

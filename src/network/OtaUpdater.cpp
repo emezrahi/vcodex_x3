@@ -1,23 +1,29 @@
 #include "OtaUpdater.h"
 
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
 #include <Logging.h>
-#include <cstring>
+#include <NetworkClient.h>
+#include <NetworkClientSecure.h>
+#include <Update.h>
+#include <esp_wifi.h>
 
-#include "esp_http_client.h"
-#include "esp_https_ota.h"
-#include "esp_wifi.h"
+#include <memory>
+#include <string>
+
+#include <HalStorage.h>
+#include "network/HttpDownloader.h"
+#include "util/UrlUtils.h"
 
 namespace {
-#ifndef OTA_MANIFEST_URL
-#define OTA_MANIFEST_URL "https://raw.githubusercontent.com/franssjz/cpr-vcodex/main/ota.json"
+#ifndef OTA_RELEASE_REPO
+#define OTA_RELEASE_REPO "franssjz/cpr-vcodex"
 #endif
 
-constexpr char otaManifestUrl[] = OTA_MANIFEST_URL;
-
-/* This is buffer and size holder to keep upcoming data from latestReleaseUrl */
-char* local_buf;
-int output_len;
+constexpr char latestReleaseUrl[] = "https://api.github.com/repos/" OTA_RELEASE_REPO "/releases/latest";
+constexpr uint16_t kHttpTimeoutMs = 15000;
+constexpr char kOtaTempDir[] = "/.crosspoint";
+constexpr char kOtaTempFile[] = "/.crosspoint/ota_firmware.bin";
 
 struct ParsedVersion {
   int segments[4] = {0, 0, 0, 0};
@@ -77,181 +83,182 @@ int compareVersions(const ParsedVersion& left, const ParsedVersion& right) {
   return 0;
 }
 
-/*
- * When esp_crt_bundle.h included, it is pointing wrong header file
- * which is something under WifiClientSecure because of our framework based on arduno platform.
- * To manage this obstacle, don't include anything, just extern and it will point correct one.
- */
-extern "C" {
-extern esp_err_t esp_crt_bundle_attach(void* conf);
-}
-
-esp_err_t http_client_set_header_cb(esp_http_client_handle_t http_client) {
-  return esp_http_client_set_header(http_client, "User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
-}
-
-esp_err_t event_handler(esp_http_client_event_t* event) {
-  /* We do interested in only HTTP_EVENT_ON_DATA event only */
-  if (event->event_id != HTTP_EVENT_ON_DATA) return ESP_OK;
-
-  if (!esp_http_client_is_chunked_response(event->client)) {
-    int content_len = esp_http_client_get_content_length(event->client);
-    int copy_len = 0;
-
-    if (local_buf == NULL) {
-      /* local_buf life span is tracked by caller checkForUpdate */
-      local_buf = static_cast<char*>(calloc(content_len + 1, sizeof(char)));
-      output_len = 0;
-      if (local_buf == NULL) {
-        LOG_ERR("OTA", "HTTP Client Out of Memory Failed, Allocation %d", content_len);
-        return ESP_ERR_NO_MEM;
-      }
-    }
-    copy_len = min(event->data_len, (content_len - output_len));
-    if (copy_len) {
-      memcpy(local_buf + output_len, event->data, copy_len);
-    }
-    output_len += copy_len;
+std::string formatHttpFailure(const int httpCode, const char* prefix) {
+  std::string message = prefix;
+  if (httpCode >= 0) {
+    message += "HTTP ";
+    message += std::to_string(httpCode);
   } else {
-    /* Code might be hits here, It happened once (for version checking) but I need more logs to handle that */
-    int chunked_len;
-    esp_http_client_get_chunk_length(event->client, &chunked_len);
-    LOG_DBG("OTA", "esp_http_client_is_chunked_response failed, chunked_len: %d", chunked_len);
+    const String errorText = HTTPClient::errorToString(httpCode);
+    message += errorText.c_str();
   }
-
-  return ESP_OK;
-} /* event_handler */
-
-OtaUpdater::OtaUpdaterError performJsonRequest(const char* url, std::string& lastErrorMessage, const char* label) {
-  local_buf = NULL;
-  output_len = 0;
-
-  esp_http_client_config_t client_config = {};
-  client_config.url = url;
-  client_config.event_handler = event_handler;
-  client_config.timeout_ms = 15000;
-  /* Default HTTP client buffer size 512 byte only */
-  client_config.buffer_size = 8192;
-  client_config.buffer_size_tx = 8192;
-  client_config.skip_cert_common_name_check = true;
-  client_config.crt_bundle_attach = esp_crt_bundle_attach;
-  client_config.keep_alive_enable = false;
-  client_config.addr_type = HTTP_ADDR_TYPE_INET;
-
-  struct localBufCleaner {
-    char** bufPtr;
-    ~localBufCleaner() {
-      if (*bufPtr) {
-        free(*bufPtr);
-        *bufPtr = NULL;
-      }
-    }
-  } localBufCleaner = {&local_buf};
-
-  esp_http_client_handle_t client_handle = esp_http_client_init(&client_config);
-  if (!client_handle) {
-    LOG_ERR("OTA", "HTTP Client Handle Failed");
-    lastErrorMessage = std::string("Could not create ") + label + " client";
-    return OtaUpdater::INTERNAL_UPDATE_ERROR;
-  }
-
-  esp_err_t esp_err = esp_http_client_set_header(client_handle, "User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
-  if (esp_err != ESP_OK) {
-    LOG_ERR("OTA", "esp_http_client_set_header Failed : %s", esp_err_to_name(esp_err));
-    lastErrorMessage = std::string(label) + " header error: " + esp_err_to_name(esp_err);
-    esp_http_client_cleanup(client_handle);
-    return OtaUpdater::INTERNAL_UPDATE_ERROR;
-  }
-
-  esp_err = esp_http_client_perform(client_handle);
-  if (esp_err != ESP_OK) {
-    LOG_ERR("OTA", "esp_http_client_perform Failed : %s", esp_err_to_name(esp_err));
-    if (esp_err == ESP_ERR_HTTP_CONNECT) {
-      lastErrorMessage = std::string("Could not reach ") + label;
-    } else if (esp_err == ESP_ERR_HTTP_FETCH_HEADER) {
-      lastErrorMessage = std::string(label) + " headers failed";
-    } else if (esp_err == ESP_ERR_HTTP_EAGAIN) {
-      lastErrorMessage = std::string(label) + " timed out";
-    } else {
-      lastErrorMessage = std::string(label) + " request failed: " + esp_err_to_name(esp_err);
-    }
-    esp_http_client_cleanup(client_handle);
-    return OtaUpdater::HTTP_ERROR;
-  }
-
-  const int statusCode = esp_http_client_get_status_code(client_handle);
-  esp_err = esp_http_client_cleanup(client_handle);
-  if (esp_err != ESP_OK) {
-    LOG_ERR("OTA", "esp_http_client_cleanup Failed : %s", esp_err_to_name(esp_err));
-    lastErrorMessage = std::string(label) + " cleanup error: " + esp_err_to_name(esp_err);
-    return OtaUpdater::INTERNAL_UPDATE_ERROR;
-  }
-
-  if (statusCode < 200 || statusCode >= 300) {
-    LOG_ERR("OTA", "%s returned HTTP %d", label, statusCode);
-    lastErrorMessage = std::string(label) + " returned HTTP " + std::to_string(statusCode);
-    return OtaUpdater::HTTP_ERROR;
-  }
-
-  return OtaUpdater::OK;
+  return message;
 }
-} /* namespace */
+
+bool beginHttpRequest(HTTPClient& http, std::unique_ptr<NetworkClientSecure>& secureClient, NetworkClient& plainClient,
+                      const std::string& url, const followRedirects_t redirectMode) {
+  http.setFollowRedirects(redirectMode);
+  http.setConnectTimeout(kHttpTimeoutMs);
+  http.setTimeout(kHttpTimeoutMs);
+  http.setReuse(false);
+
+  if (UrlUtils::isHttpsUrl(url)) {
+    secureClient.reset(new NetworkClientSecure);
+    if (!secureClient) {
+      return false;
+    }
+    secureClient->setInsecure();
+    secureClient->setTimeout((kHttpTimeoutMs / 1000U) + 1U);
+    return http.begin(*secureClient, url.c_str());
+  }
+
+  return http.begin(plainClient, url.c_str());
+}
+
+std::string resolveDownloadUrl(const std::string& url) {
+  HTTPClient http;
+  std::unique_ptr<NetworkClientSecure> secureClient;
+  NetworkClient plainClient;
+  if (!beginHttpRequest(http, secureClient, plainClient, url, HTTPC_DISABLE_FOLLOW_REDIRECTS)) {
+    return url;
+  }
+
+  const char* headerKeys[] = {"Location"};
+  http.collectHeaders(headerKeys, 1);
+  http.addHeader("User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
+  const int httpCode = http.sendRequest("HEAD");
+
+  std::string resolved = url;
+  if ((httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND || httpCode == HTTP_CODE_SEE_OTHER ||
+       httpCode == HTTP_CODE_TEMPORARY_REDIRECT || httpCode == 308) &&
+      http.hasHeader("Location")) {
+    const String location = http.header("Location");
+    if (location.length() > 0) {
+      resolved = location.c_str();
+    }
+  }
+
+  http.end();
+  return resolved;
+}
+
+}  // namespace
 
 OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
   JsonDocument filter;
   JsonDocument doc;
-  lastErrorMessage.clear();
+
   updateAvailable = false;
   latestVersion.clear();
   otaUrl.clear();
+  lastErrorMessage.clear();
   otaSize = 0;
   processedSize = 0;
   totalSize = 0;
 
-  const auto requestResult = performJsonRequest(otaManifestUrl, lastErrorMessage, "OTA manifest");
-  if (requestResult != OK) {
-    return requestResult;
+  HTTPClient http;
+  std::unique_ptr<NetworkClientSecure> secureClient;
+  NetworkClient plainClient;
+  if (!beginHttpRequest(http, secureClient, plainClient, latestReleaseUrl, HTTPC_STRICT_FOLLOW_REDIRECTS)) {
+    lastErrorMessage = "Release client open failed";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    return INTERNAL_UPDATE_ERROR;
   }
 
-  filter["version"] = true;
-  filter["firmware_url"] = true;
-  filter["size"] = true;
-  const DeserializationError error = deserializeJson(doc, local_buf, DeserializationOption::Filter(filter));
+  http.addHeader("User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
+  const int httpCode = http.GET();
+  if (httpCode != HTTP_CODE_OK) {
+    lastErrorMessage = formatHttpFailure(httpCode, "Release request failed: ");
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    http.end();
+    return HTTP_ERROR;
+  }
+
+  filter["tag_name"] = true;
+  filter["assets"][0]["name"] = true;
+  filter["assets"][0]["browser_download_url"] = true;
+  filter["assets"][0]["size"] = true;
+  NetworkClient* responseStream = http.getStreamPtr();
+  if (responseStream == nullptr) {
+    lastErrorMessage = "Release stream unavailable";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    http.end();
+    return INTERNAL_UPDATE_ERROR;
+  }
+
+  const int responseLength = http.getSize();
+  const DeserializationError error = deserializeJson(doc, *responseStream, DeserializationOption::Filter(filter));
+  http.end();
+
   if (error) {
-    LOG_ERR("OTA", "JSON parse failed: %s", error.c_str());
-    lastErrorMessage = std::string("OTA manifest parse failed: ") + error.c_str();
+    if (error == DeserializationError::EmptyInput) {
+      if (responseLength == 0) {
+        lastErrorMessage = "Release response empty";
+      } else {
+        lastErrorMessage = "Release stream empty";
+      }
+    } else {
+      lastErrorMessage = std::string("Release parse failed: ") + error.c_str();
+    }
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
     return JSON_PARSE_ERROR;
   }
 
-  if (!doc["version"].is<std::string>()) {
-    LOG_ERR("OTA", "No version found in manifest");
-    lastErrorMessage = "OTA manifest version missing";
+  if (!doc["tag_name"].is<std::string>()) {
+    lastErrorMessage = "Release tag missing";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
     return JSON_PARSE_ERROR;
   }
 
-  if (!doc["firmware_url"].is<std::string>()) {
-    LOG_ERR("OTA", "No firmware_url found in manifest");
-    lastErrorMessage = "OTA firmware URL missing";
+  if (!doc["assets"].is<JsonArray>()) {
+    lastErrorMessage = "Release assets missing";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
     return JSON_PARSE_ERROR;
   }
 
-  if (!doc["size"].is<size_t>() && !doc["size"].is<uint32_t>() && !doc["size"].is<int>()) {
-    LOG_ERR("OTA", "No size found in manifest");
-    lastErrorMessage = "OTA firmware size missing";
-    return JSON_PARSE_ERROR;
+  latestVersion = doc["tag_name"].as<std::string>();
+
+  bool fallbackBinFound = false;
+  std::string fallbackUrl;
+  size_t fallbackSize = 0;
+  for (JsonObject asset : doc["assets"].as<JsonArray>()) {
+    if (!asset["name"].is<std::string>() || !asset["browser_download_url"].is<std::string>() ||
+        (!asset["size"].is<size_t>() && !asset["size"].is<int>() && !asset["size"].is<uint32_t>())) {
+      continue;
+    }
+
+    const std::string assetName = asset["name"].as<std::string>();
+    const std::string assetUrl = asset["browser_download_url"].as<std::string>();
+    const size_t assetSize = asset["size"].as<size_t>();
+
+    if (assetName == "firmware.bin") {
+      otaUrl = assetUrl;
+      otaSize = assetSize;
+      updateAvailable = true;
+      break;
+    }
+
+    if (!fallbackBinFound && assetName.size() > 4 && assetName.substr(assetName.size() - 4) == ".bin") {
+      fallbackUrl = assetUrl;
+      fallbackSize = assetSize;
+      fallbackBinFound = true;
+    }
   }
 
-  latestVersion = doc["version"].as<std::string>();
-  otaUrl = doc["firmware_url"].as<std::string>();
-  otaSize = doc["size"].as<size_t>();
-  totalSize = otaSize;
-  updateAvailable = !latestVersion.empty() && !otaUrl.empty() && otaSize > 0;
+  if (!updateAvailable && fallbackBinFound) {
+    otaUrl = fallbackUrl;
+    otaSize = fallbackSize;
+    updateAvailable = true;
+  }
 
   if (!updateAvailable) {
-    lastErrorMessage = "OTA manifest incomplete";
-    return JSON_PARSE_ERROR;
+    lastErrorMessage = "No .bin asset found";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    return ASSET_NOT_FOUND_ERROR;
   }
 
+  totalSize = otaSize;
+  otaUrl = resolveDownloadUrl(otaUrl);
   LOG_DBG("OTA", "Found update: %s", latestVersion.c_str());
   return OK;
 }
@@ -266,6 +273,7 @@ bool OtaUpdater::isUpdateNewer() const {
   if (!latest.valid || !current.valid) {
     return latestVersion != CROSSPOINT_VERSION;
   }
+
   return compareVersions(latest, current) > 0;
 }
 
@@ -277,83 +285,126 @@ OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate() {
     return UPDATE_OLDER_ERROR;
   }
 
-  esp_https_ota_handle_t ota_handle = NULL;
-  esp_err_t esp_err;
-  /* Signal for OtaUpdateActivity */
   render = false;
+  processedSize = 0;
 
-  esp_http_client_config_t client_config = {};
-  client_config.url = otaUrl.c_str();
-  client_config.timeout_ms = 15000;
-  /* Default HTTP client buffer size 512 byte only
-   * not sufficent to handle URL redirection cases or
-   * parsing of large HTTP headers.
-   */
-  client_config.buffer_size = 8192;
-  client_config.buffer_size_tx = 8192;
-  client_config.skip_cert_common_name_check = true;
-  client_config.crt_bundle_attach = esp_crt_bundle_attach;
-  client_config.keep_alive_enable = false;
-  client_config.addr_type = HTTP_ADDR_TYPE_INET;
+  HTTPClient http;
+  std::unique_ptr<NetworkClientSecure> secureClient;
+  NetworkClient plainClient;
+  if (!beginHttpRequest(http, secureClient, plainClient, otaUrl, HTTPC_STRICT_FOLLOW_REDIRECTS)) {
+    lastErrorMessage = "OTA client open failed";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    return INTERNAL_UPDATE_ERROR;
+  }
 
-  esp_https_ota_config_t ota_config = {
-      .http_config = &client_config,
-      .http_client_init_cb = http_client_set_header_cb,
-  };
+  http.addHeader("User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
 
-  /* For better timing and connectivity, we disable power saving for WiFi */
   esp_wifi_set_ps(WIFI_PS_NONE);
 
-  esp_err = esp_https_ota_begin(&ota_config, &ota_handle);
-  if (esp_err != ESP_OK) {
-    LOG_DBG("OTA", "HTTP OTA Begin Failed: %s", esp_err_to_name(esp_err));
-    if (esp_err == ESP_ERR_HTTP_CONNECT) {
-      lastErrorMessage = "Could not reach OTA download URL";
-    } else {
-      lastErrorMessage = std::string("OTA begin failed: ") + esp_err_to_name(esp_err);
-    }
-    return INTERNAL_UPDATE_ERROR;
+  http.end();
+
+  Storage.mkdir(kOtaTempDir);
+  if (Storage.exists(kOtaTempFile)) {
+    Storage.remove(kOtaTempFile);
   }
 
-  do {
-    esp_err = esp_https_ota_perform(ota_handle);
-    processedSize = esp_https_ota_get_image_len_read(ota_handle);
-    /* Sent signal to  OtaUpdateActivity */
-    render = true;
-    delay(100);  // TODO: should we replace this with something better?
-  } while (esp_err == ESP_ERR_HTTPS_OTA_IN_PROGRESS);
+  totalSize = otaSize;
+  processedSize = 0;
+  render = true;
+  const auto downloadResult =
+      HttpDownloader::downloadToFile(otaUrl, kOtaTempFile, [this](const size_t downloaded, const size_t total) {
+        processedSize = downloaded;
+        if (total > 0) {
+          totalSize = total;
+        }
+        render = true;
+      });
 
-  /* Return back to default power saving for WiFi in case of failing */
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
 
-  if (esp_err != ESP_OK) {
-    LOG_ERR("OTA", "esp_https_ota_perform Failed: %s", esp_err_to_name(esp_err));
-    if (esp_err == ESP_ERR_HTTP_CONNECT) {
-      lastErrorMessage = "OTA download connection failed";
-    } else if (esp_err == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
-      lastErrorMessage = "OTA still in progress";
+  if (downloadResult != HttpDownloader::OK) {
+    if (downloadResult == HttpDownloader::HTTP_ERROR) {
+      lastErrorMessage = "OTA download failed";
+    } else if (downloadResult == HttpDownloader::FILE_ERROR) {
+      lastErrorMessage = "OTA temp file failed";
     } else {
-      lastErrorMessage = std::string("OTA download failed: ") + esp_err_to_name(esp_err);
+      lastErrorMessage = "OTA download aborted";
     }
-    esp_https_ota_finish(ota_handle);
-    return HTTP_ERROR;
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    Storage.remove(kOtaTempFile);
+    return (downloadResult == HttpDownloader::HTTP_ERROR) ? HTTP_ERROR : INTERNAL_UPDATE_ERROR;
   }
 
-  if (!esp_https_ota_is_complete_data_received(ota_handle)) {
-    LOG_ERR("OTA", "esp_https_ota_is_complete_data_received Failed: %s", esp_err_to_name(esp_err));
-    lastErrorMessage = "OTA data incomplete";
-    esp_https_ota_finish(ota_handle);
+  HalFile firmwareFile;
+  if (!Storage.openFileForRead("OTA", kOtaTempFile, firmwareFile)) {
+    lastErrorMessage = "OTA temp file unavailable";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    Storage.remove(kOtaTempFile);
     return INTERNAL_UPDATE_ERROR;
   }
 
-  esp_err = esp_https_ota_finish(ota_handle);
-  if (esp_err != ESP_OK) {
-    LOG_ERR("OTA", "esp_https_ota_finish Failed: %s", esp_err_to_name(esp_err));
-    lastErrorMessage = std::string("OTA finish failed: ") + esp_err_to_name(esp_err);
+  const size_t firmwareSize = firmwareFile.size();
+  if (!Update.begin(firmwareSize > 0 ? firmwareSize : UPDATE_SIZE_UNKNOWN)) {
+    lastErrorMessage = std::string("OTA begin failed: ") + Update.errorString();
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    firmwareFile.close();
+    Storage.remove(kOtaTempFile);
     return INTERNAL_UPDATE_ERROR;
   }
 
-  LOG_INF("OTA", "Update completed");
+  uint8_t buffer[1024];
+  size_t writtenTotal = 0;
+  while (writtenTotal < firmwareSize) {
+    const size_t remaining = firmwareSize - writtenTotal;
+    const size_t toRead = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+    const int bytesRead = firmwareFile.read(buffer, toRead);
+    if (bytesRead <= 0) {
+      break;
+    }
+
+    const size_t bytesWritten = Update.write(buffer, static_cast<size_t>(bytesRead));
+    if (bytesWritten != static_cast<size_t>(bytesRead)) {
+      Update.abort();
+      firmwareFile.close();
+      Storage.remove(kOtaTempFile);
+      lastErrorMessage = std::string("OTA write failed: ") + Update.errorString();
+      LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+      return INTERNAL_UPDATE_ERROR;
+    }
+
+    writtenTotal += bytesWritten;
+  }
+
+  firmwareFile.close();
+  Storage.remove(kOtaTempFile);
+
+  if (writtenTotal == 0) {
+    Update.abort();
+    lastErrorMessage = "OTA local file empty";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    return INTERNAL_UPDATE_ERROR;
+  }
+
+  if (writtenTotal != firmwareSize) {
+    Update.abort();
+    lastErrorMessage = "OTA local apply incomplete";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    return INTERNAL_UPDATE_ERROR;
+  }
+
+  if (!Update.end()) {
+    lastErrorMessage = std::string("OTA finish failed: ") + Update.errorString();
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    return INTERNAL_UPDATE_ERROR;
+  }
+
+  if (!Update.isFinished()) {
+    lastErrorMessage = "OTA image not finished";
+    LOG_ERR("OTA", "%s", lastErrorMessage.c_str());
+    return INTERNAL_UPDATE_ERROR;
+  }
+
   lastErrorMessage.clear();
+  LOG_INF("OTA", "Update completed");
   return OK;
 }
