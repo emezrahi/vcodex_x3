@@ -131,6 +131,15 @@ EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 unsigned long t1 = 0;
 
+enum class DeferredStoreLoadStage : uint8_t {
+  PendingReadingStats,
+  PendingAchievements,
+  Done,
+};
+
+static DeferredStoreLoadStage deferredStoreLoadStage = DeferredStoreLoadStage::Done;
+static bool deferredStoreLoadingEnabled = false;
+
 void waitForPowerRelease() {
   gpio.update();
   while (gpio.isPressed(HalGPIO::BTN_POWER)) {
@@ -258,16 +267,25 @@ void setup() {
   }
 
   APP_STATE.loadFromFile();
-  READING_STATS.loadFromFile();
-  ACHIEVEMENTS.loadFromFile();
   RECENT_BOOKS.loadFromFile();
 
   // Boot to home screen if no book is open, last sleep was not from reader, back button is held, or reader activity
   // crashed (indicated by readerActivityLoadCount > 0)
-  if (APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader ||
-      mappedInputManager.isPressed(MappedInputManager::Button::Back) || APP_STATE.readerActivityLoadCount > 0) {
+  const bool bootToHome = APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader ||
+                          mappedInputManager.isPressed(MappedInputManager::Button::Back) ||
+                          APP_STATE.readerActivityLoadCount > 0;
+
+  if (bootToHome) {
+    // Home can paint immediately without the heavier stats stores; load them right after the first frame.
+    deferredStoreLoadStage = DeferredStoreLoadStage::PendingReadingStats;
+    deferredStoreLoadingEnabled = true;
     activityManager.goHome();
   } else {
+    READING_STATS.loadFromFile();
+    ACHIEVEMENTS.loadFromFile();
+    deferredStoreLoadStage = DeferredStoreLoadStage::Done;
+    deferredStoreLoadingEnabled = false;
+
     // Clear app state to avoid getting into a boot loop if the epub doesn't load
     const auto path = APP_STATE.openEpubPath;
     APP_STATE.openEpubPath = "";
@@ -284,6 +302,7 @@ void loop() {
   static unsigned long maxLoopDuration = 0;
   const unsigned long loopStartTime = millis();
   static unsigned long lastMemPrint = 0;
+  static bool firstFramePresented = false;
 
   gpio.update();
 
@@ -367,6 +386,38 @@ void loop() {
   const unsigned long activityStartTime = millis();
   activityManager.loop();
   const unsigned long activityDuration = millis() - activityStartTime;
+
+  if (!firstFramePresented) {
+    firstFramePresented = true;
+  } else if (deferredStoreLoadingEnabled) {
+    bool requestRefresh = false;
+
+    switch (deferredStoreLoadStage) {
+      case DeferredStoreLoadStage::PendingReadingStats:
+        LOG_DBG("MAIN", "Deferred loading reading stats");
+        READING_STATS.loadFromFile();
+        deferredStoreLoadStage = DeferredStoreLoadStage::PendingAchievements;
+        requestRefresh = true;
+        break;
+      case DeferredStoreLoadStage::PendingAchievements:
+        LOG_DBG("MAIN", "Deferred loading achievements");
+        ACHIEVEMENTS.loadFromFile();
+        deferredStoreLoadStage = DeferredStoreLoadStage::Done;
+        requestRefresh = true;
+        break;
+      case DeferredStoreLoadStage::Done:
+      default:
+        deferredStoreLoadingEnabled = false;
+        break;
+    }
+
+    if (deferredStoreLoadStage == DeferredStoreLoadStage::Done) {
+      deferredStoreLoadingEnabled = false;
+    }
+    if (requestRefresh) {
+      activityManager.requestUpdate();
+    }
+  }
 
   const unsigned long loopDuration = millis() - loopStartTime;
   if (loopDuration > maxLoopDuration) {
