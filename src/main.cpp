@@ -204,17 +204,26 @@ void setup() {
 
   HalSystem::begin();
   gpio.begin();
+  const auto wakeupReason = gpio.getWakeupReason();
   powerManager.begin();
 
-  // Only start serial if USB connected
+  // A charger-induced cold boot should go back to sleep immediately instead of
+  // paying the normal boot cost first.
+  if (wakeupReason == HalGPIO::WakeupReason::AfterUSBPower) {
+    powerManager.startDeepSleep(gpio);
+  }
+
+#ifdef ENABLE_SERIAL_LOG
+  // Only wait briefly for serial on debug builds.
   if (gpio.isUsbConnected()) {
     Serial.begin(115200);
-    // Wait up to 3 seconds for Serial to be ready to catch early logs
+    // Keep the timeout short so USB power does not noticeably slow wake/boot.
     unsigned long start = millis();
-    while (!Serial && (millis() - start) < 3000) {
+    while (!Serial && (millis() - start) < 500) {
       delay(10);
     }
   }
+#endif
 
   // SD Card Initialization
   // We need 6 open files concurrently when parsing a new chapter
@@ -235,7 +244,6 @@ void setup() {
   ButtonNavigator::setMappedInputManager(mappedInputManager);
   TimeUtils::configureTimezone();
 
-  const auto wakeupReason = gpio.getWakeupReason();
   const bool wokeFromDeepSleep = esp_reset_reason() == ESP_RST_DEEPSLEEP;
   LOG_INF("MAIN", "Hardware detect: %s", gpio.deviceIsX3() ? "X3" : "X4");
 
