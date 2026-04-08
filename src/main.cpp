@@ -131,15 +131,6 @@ EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 unsigned long t1 = 0;
 
-enum class DeferredStoreLoadStage : uint8_t {
-  PendingReadingStats,
-  PendingAchievements,
-  Done,
-};
-
-static DeferredStoreLoadStage deferredStoreLoadStage = DeferredStoreLoadStage::Done;
-static bool deferredStoreLoadingEnabled = false;
-
 void waitForPowerRelease() {
   gpio.update();
   while (gpio.isPressed(HalGPIO::BTN_POWER)) {
@@ -148,27 +139,13 @@ void waitForPowerRelease() {
   }
 }
 
-void verifyUsbPowerWakeup() {
-  // USB power must never resume the device by itself.
-  // Require an actual power-button press, but keep the short-press path fast.
-  const uint16_t requiredDuration =
-      (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP) ? 1 : SETTINGS.getPowerButtonDuration();
-  gpio.verifyPowerButtonWakeup(requiredDuration, false);
-}
-
 // Enter deep sleep mode
 void enterDeepSleep() {
   HalPowerManager::Lock powerLock;  // Ensure we are at normal CPU frequency for sleep preparation
-  const bool lastSleepFromReader = activityManager.isReaderActivity();
-  const bool needsStateSave = APP_STATE.lastSleepFromReader != lastSleepFromReader;
-  APP_STATE.lastSleepFromReader = lastSleepFromReader;
+  APP_STATE.lastSleepFromReader = activityManager.isReaderActivity();
+  APP_STATE.saveToFile();
 
-  // Render the sleep screen first so the device feels locked immediately.
   activityManager.goToSleep();
-
-  if (needsStateSave) {
-    APP_STATE.saveToFile();
-  }
 
   display.deepSleep();
   LOG_DBG("MAIN", "Entering deep sleep");
@@ -218,7 +195,6 @@ void setup() {
 
   HalSystem::begin();
   gpio.begin();
-  const auto wakeupReason = gpio.getWakeupReason();
   powerManager.begin();
 
 #ifdef ENABLE_SERIAL_LOG
@@ -252,18 +228,18 @@ void setup() {
   ButtonNavigator::setMappedInputManager(mappedInputManager);
   TimeUtils::configureTimezone();
 
-  const bool wokeFromDeepSleep = esp_reset_reason() == ESP_RST_DEEPSLEEP;
   LOG_INF("MAIN", "Hardware detect: %s", gpio.deviceIsX3() ? "X3" : "X4");
 
-  switch (wakeupReason) {
+  switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:
       LOG_DBG("MAIN", "Verifying power button press duration");
       gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonDuration(),
                                    SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP);
       break;
     case HalGPIO::WakeupReason::AfterUSBPower:
-      LOG_DBG("MAIN", "Wakeup reason: After USB Power, verifying explicit power button press");
-      verifyUsbPowerWakeup();
+      // If USB power caused a cold boot, go back to sleep
+      LOG_DBG("MAIN", "Wakeup reason: After USB Power");
+      powerManager.startDeepSleep(gpio);
       break;
     case HalGPIO::WakeupReason::AfterFlash:
       // After flashing, just proceed to boot
@@ -276,13 +252,12 @@ void setup() {
   LOG_DBG("MAIN", "Starting CrossPoint version " CROSSPOINT_VERSION_DISPLAY);
 
   setupDisplayAndFonts();
-
-  if (!wokeFromDeepSleep) {
-    activityManager.goToBoot();
-  }
+  activityManager.goToBoot();
 
   APP_STATE.loadFromFile();
   RECENT_BOOKS.loadFromFile();
+  READING_STATS.loadFromFile();
+  ACHIEVEMENTS.loadFromFile();
 
   // Boot to home screen if no book is open, last sleep was not from reader, back button is held, or reader activity
   // crashed (indicated by readerActivityLoadCount > 0)
@@ -291,16 +266,8 @@ void setup() {
                           APP_STATE.readerActivityLoadCount > 0;
 
   if (bootToHome) {
-    // Home can paint immediately without the heavier stats stores; load them right after the first frame.
-    deferredStoreLoadStage = DeferredStoreLoadStage::PendingReadingStats;
-    deferredStoreLoadingEnabled = true;
     activityManager.goHome();
   } else {
-    READING_STATS.loadFromFile();
-    ACHIEVEMENTS.loadFromFile();
-    deferredStoreLoadStage = DeferredStoreLoadStage::Done;
-    deferredStoreLoadingEnabled = false;
-
     // Clear app state to avoid getting into a boot loop if the epub doesn't load
     const auto path = APP_STATE.openEpubPath;
     APP_STATE.openEpubPath = "";
@@ -317,7 +284,6 @@ void loop() {
   static unsigned long maxLoopDuration = 0;
   const unsigned long loopStartTime = millis();
   static unsigned long lastMemPrint = 0;
-  static bool firstFramePresented = false;
 
   gpio.update();
 
@@ -401,38 +367,6 @@ void loop() {
   const unsigned long activityStartTime = millis();
   activityManager.loop();
   const unsigned long activityDuration = millis() - activityStartTime;
-
-  if (!firstFramePresented) {
-    firstFramePresented = true;
-  } else if (deferredStoreLoadingEnabled) {
-    bool requestRefresh = false;
-
-    switch (deferredStoreLoadStage) {
-      case DeferredStoreLoadStage::PendingReadingStats:
-        LOG_DBG("MAIN", "Deferred loading reading stats");
-        READING_STATS.loadFromFile();
-        deferredStoreLoadStage = DeferredStoreLoadStage::PendingAchievements;
-        requestRefresh = true;
-        break;
-      case DeferredStoreLoadStage::PendingAchievements:
-        LOG_DBG("MAIN", "Deferred loading achievements");
-        ACHIEVEMENTS.loadFromFile();
-        deferredStoreLoadStage = DeferredStoreLoadStage::Done;
-        requestRefresh = true;
-        break;
-      case DeferredStoreLoadStage::Done:
-      default:
-        deferredStoreLoadingEnabled = false;
-        break;
-    }
-
-    if (deferredStoreLoadStage == DeferredStoreLoadStage::Done) {
-      deferredStoreLoadingEnabled = false;
-    }
-    if (requestRefresh) {
-      activityManager.requestUpdate();
-    }
-  }
 
   const unsigned long loopDuration = millis() - loopStartTime;
   if (loopDuration > maxLoopDuration) {

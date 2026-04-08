@@ -18,7 +18,6 @@
 #include "MappedInputManager.h"
 #include "OtaUpdateActivity.h"
 #include "ReadingStatsStore.h"
-#include "SettingsList.h"
 #include "ShortcutLocationActivity.h"
 #include "ShortcutOrderActivity.h"
 #include "ShortcutVisibilityActivity.h"
@@ -109,8 +108,12 @@ std::string getSettingValueText(const SettingInfo& setting) {
     return value ? tr(STR_STATE_ON) : tr(STR_STATE_OFF);
   }
   if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
+    if (setting.enumValues.empty()) {
+      return "";
+    }
     const uint8_t value = SETTINGS.*(setting.valuePtr);
-    return I18N.get(setting.enumValues[value]);
+    const size_t safeIndex = std::min<size_t>(value, setting.enumValues.size() - 1);
+    return I18N.get(setting.enumValues[safeIndex]);
   }
   if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
     return std::to_string(SETTINGS.*(setting.valuePtr));
@@ -123,6 +126,146 @@ std::string getSettingValueText(const SettingInfo& setting) {
 
 const char* getSettingNameText(const SettingInfo& setting) {
   return I18N.get(setting.nameId);
+}
+
+const std::vector<SettingInfo>& getDeviceDisplaySettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Enum(StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen,
+                        {StrId::STR_DARK, StrId::STR_LIGHT, StrId::STR_CUSTOM, StrId::STR_COVER, StrId::STR_NONE_OPT,
+                         StrId::STR_COVER_CUSTOM}),
+      SettingInfo::Enum(StrId::STR_SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode,
+                        {StrId::STR_FIT, StrId::STR_CROP}),
+      SettingInfo::Enum(StrId::STR_SLEEP_COVER_FILTER, &CrossPointSettings::sleepScreenCoverFilter,
+                        {StrId::STR_NONE_OPT, StrId::STR_FILTER_CONTRAST, StrId::STR_INVERTED}),
+      SettingInfo::Enum(StrId::STR_HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage,
+                        {StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS}),
+      SettingInfo::Enum(
+          StrId::STR_REFRESH_FREQ, &CrossPointSettings::refreshFrequency,
+          {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30}),
+      SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
+                        {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED,
+                         StrId::STR_THEME_LYRA_CUSTOM}),
+      SettingInfo::Toggle(StrId::STR_DARK_MODE, &CrossPointSettings::darkMode),
+      SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getDeviceReaderSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Enum(StrId::STR_FONT_FAMILY, &CrossPointSettings::fontFamily,
+                        {StrId::STR_BOOKERLY, StrId::STR_NOTO_SANS, StrId::STR_LEXEND}),
+      SettingInfo::Enum(StrId::STR_FONT_SIZE, &CrossPointSettings::fontSize,
+                        {StrId::STR_X_SMALL, StrId::STR_SMALL, StrId::STR_MEDIUM, StrId::STR_LARGE,
+                         StrId::STR_X_LARGE}),
+      SettingInfo::Enum(StrId::STR_LINE_SPACING, &CrossPointSettings::lineSpacing,
+                        {StrId::STR_TIGHT, StrId::STR_NORMAL, StrId::STR_WIDE}),
+      SettingInfo::Value(StrId::STR_SCREEN_MARGIN, &CrossPointSettings::screenMargin, {5, 40, 5}),
+      SettingInfo::Enum(StrId::STR_PARA_ALIGNMENT, &CrossPointSettings::paragraphAlignment,
+                        {StrId::STR_JUSTIFY, StrId::STR_ALIGN_LEFT, StrId::STR_CENTER, StrId::STR_ALIGN_RIGHT,
+                         StrId::STR_BOOK_S_STYLE}),
+      SettingInfo::Toggle(StrId::STR_EMBEDDED_STYLE, &CrossPointSettings::embeddedStyle),
+      SettingInfo::Toggle(StrId::STR_HYPHENATION, &CrossPointSettings::hyphenationEnabled),
+      SettingInfo::Enum(StrId::STR_ORIENTATION, &CrossPointSettings::orientation,
+                        {StrId::STR_PORTRAIT, StrId::STR_LANDSCAPE_CW, StrId::STR_INVERTED,
+                         StrId::STR_LANDSCAPE_CCW}),
+      SettingInfo::Toggle(StrId::STR_EXTRA_SPACING, &CrossPointSettings::extraParagraphSpacing),
+      SettingInfo::Toggle(StrId::STR_TEXT_AA, &CrossPointSettings::textAntiAliasing),
+      SettingInfo::Enum(StrId::STR_TEXT_DARKNESS, &CrossPointSettings::textDarkness,
+                        {StrId::STR_NORMAL, StrId::STR_DARK, StrId::STR_EXTRA_DARK}),
+      SettingInfo::Enum(StrId::STR_IMAGES, &CrossPointSettings::imageRendering,
+                        {StrId::STR_IMAGES_DISPLAY, StrId::STR_IMAGES_PLACEHOLDER, StrId::STR_IMAGES_SUPPRESS}),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getDeviceControlsSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Enum(StrId::STR_SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
+                        {StrId::STR_PREV_NEXT, StrId::STR_NEXT_PREV}),
+      SettingInfo::Toggle(StrId::STR_LONG_PRESS_SKIP, &CrossPointSettings::longPressChapterSkip),
+      SettingInfo::Enum(StrId::STR_SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn,
+                        {StrId::STR_IGNORE, StrId::STR_SLEEP, StrId::STR_PAGE_TURN}),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getDeviceSystemSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Enum(StrId::STR_TIME_TO_SLEEP, &CrossPointSettings::sleepTimeout,
+                        {StrId::STR_MIN_1, StrId::STR_MIN_5, StrId::STR_MIN_10, StrId::STR_MIN_15,
+                         StrId::STR_MIN_30}),
+      SettingInfo::Toggle(StrId::STR_SHOW_HIDDEN_FILES, &CrossPointSettings::showHiddenFiles),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getDeviceAppsSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Toggle(StrId::STR_DISPLAY_DAY, &CrossPointSettings::displayDay),
+      SettingInfo::Toggle(StrId::STR_AUTO_SYNC_DAY, &CrossPointSettings::autoSyncDay),
+      SettingInfo::Enum(StrId::STR_DATE_FORMAT, &CrossPointSettings::dateFormat,
+                        {StrId::STR_DATE_FORMAT_DD_MM_YYYY, StrId::STR_DATE_FORMAT_MM_DD_YYYY,
+                         StrId::STR_DATE_FORMAT_YYYY_MM_DD}),
+      SettingInfo::Enum(StrId::STR_DAILY_GOAL, &CrossPointSettings::dailyGoalTarget,
+                        {StrId::STR_MIN_15, StrId::STR_MIN_30, StrId::STR_MIN_45, StrId::STR_MIN_60}),
+      SettingInfo::Toggle(StrId::STR_SHOW_AFTER_READING, &CrossPointSettings::showStatsAfterReading),
+      SettingInfo::Toggle(StrId::STR_ENABLE_ACHIEVEMENTS, &CrossPointSettings::achievementsEnabled),
+      SettingInfo::Toggle(StrId::STR_ACHIEVEMENT_POPUPS, &CrossPointSettings::achievementPopups),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getReaderExtraSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getControlsExtraSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getSystemExtraSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network),
+      SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync),
+      SettingInfo::Action(StrId::STR_OPDS_BROWSER, SettingAction::OPDSBrowser),
+      SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache),
+      SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates),
+      SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language),
+  };
+  return items;
+}
+
+const std::vector<SettingInfo>& getAppExtraSettings() {
+  static const std::vector<SettingInfo> items = {
+      SettingInfo::Section(StrId::STR_DAY_SYNC_SECTION),
+      SettingInfo::Action(StrId::STR_TIME_ZONE, SettingAction::TimeZone),
+      SettingInfo::Section(StrId::STR_READING_STATS),
+      SettingInfo::Action(StrId::STR_RESET, SettingAction::ResetReadingStats),
+      SettingInfo::Action(StrId::STR_EXPORT, SettingAction::ExportReadingStats),
+      SettingInfo::Action(StrId::STR_IMPORT, SettingAction::ImportReadingStats),
+      SettingInfo::Section(StrId::STR_ACHIEVEMENTS),
+      SettingInfo::Action(StrId::STR_RESET_ACHIEVEMENTS, SettingAction::ResetAchievements),
+      SettingInfo::Action(StrId::STR_SYNC_WITH_PREV_STATS, SettingAction::SyncAchievementsFromStats),
+      SettingInfo::Section(StrId::STR_SHORTCUTS_SECTION),
+      SettingInfo::Action(StrId::STR_SHORTCUT_LOCATION, SettingAction::ShortcutLocation),
+      SettingInfo::Action(StrId::STR_SHORTCUT_VISIBILITY, SettingAction::ShortcutVisibility),
+      SettingInfo::Action(StrId::STR_ORDER_HOME_SHORTCUTS, SettingAction::OrderHomeShortcuts),
+      SettingInfo::Action(StrId::STR_ORDER_APPS_SHORTCUTS, SettingAction::OrderAppsShortcuts),
+  };
+  return items;
+}
+
+void appendSettingsPointers(std::vector<const SettingInfo*>& dest, const std::vector<SettingInfo>& src) {
+  for (const auto& item : src) {
+    dest.push_back(&item);
+  }
 }
 }  // namespace
 
@@ -154,72 +297,22 @@ void SettingsActivity::buildSettingsLists() {
   systemSettings.clear();
   appSettings.clear();
 
-  const auto& sharedSettings = getSettingsList();
-  displaySettings.reserve(sharedSettings.size());
-  readerSettings.reserve(sharedSettings.size());
-  controlsSettings.reserve(sharedSettings.size());
-  systemSettings.reserve(sharedSettings.size());
-  appSettings.reserve(sharedSettings.size() + 16);
+  displaySettings.reserve(getDeviceDisplaySettings().size());
+  readerSettings.reserve(getDeviceReaderSettings().size() + getReaderExtraSettings().size());
+  controlsSettings.reserve(getDeviceControlsSettings().size() + getControlsExtraSettings().size());
+  systemSettings.reserve(getDeviceSystemSettings().size() + getSystemExtraSettings().size());
+  appSettings.reserve(getDeviceAppsSettings().size() + getAppExtraSettings().size());
 
-  for (const auto& setting : sharedSettings) {
-    if (setting.category == StrId::STR_NONE_OPT) continue;
-    if (setting.category == StrId::STR_CAT_DISPLAY) {
-      displaySettings.push_back(setting);
-    } else if (setting.category == StrId::STR_CAT_READER) {
-      readerSettings.push_back(setting);
-    } else if (setting.category == StrId::STR_CAT_CONTROLS) {
-      controlsSettings.push_back(setting);
-    } else if (setting.category == StrId::STR_CAT_SYSTEM) {
-      systemSettings.push_back(setting);
-    } else if (setting.category == StrId::STR_APPS) {
-      continue;
-    }
-    // Web-only categories (KOReader Sync, OPDS Browser) are skipped for device UI
-  }
+  appendSettingsPointers(displaySettings, getDeviceDisplaySettings());
+  appendSettingsPointers(readerSettings, getDeviceReaderSettings());
+  appendSettingsPointers(controlsSettings, getDeviceControlsSettings());
+  appendSettingsPointers(systemSettings, getDeviceSystemSettings());
+  appendSettingsPointers(appSettings, getDeviceAppsSettings());
 
-  // Append device-only ACTION items
-  controlsSettings.insert(controlsSettings.begin(),
-                          SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_OPDS_BROWSER, SettingAction::OPDSBrowser));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language));
-  readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
-  appSettings.push_back(SettingInfo::Section(StrId::STR_DAY_SYNC_SECTION));
-  appSettings.push_back(
-      SettingInfo::Toggle(StrId::STR_DISPLAY_DAY, &CrossPointSettings::displayDay, "displayDay", StrId::STR_APPS));
-  appSettings.push_back(SettingInfo::Toggle(StrId::STR_AUTO_SYNC_DAY, &CrossPointSettings::autoSyncDay, "autoSyncDay",
-                                            StrId::STR_APPS));
-  appSettings.push_back(
-      SettingInfo::Enum(StrId::STR_DATE_FORMAT, &CrossPointSettings::dateFormat,
-                        {StrId::STR_DATE_FORMAT_DD_MM_YYYY, StrId::STR_DATE_FORMAT_MM_DD_YYYY,
-                         StrId::STR_DATE_FORMAT_YYYY_MM_DD},
-                        "dateFormat", StrId::STR_APPS));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_TIME_ZONE, SettingAction::TimeZone));
-  appSettings.push_back(SettingInfo::Section(StrId::STR_READING_STATS));
-  appSettings.push_back(SettingInfo::Enum(StrId::STR_DAILY_GOAL, &CrossPointSettings::dailyGoalTarget,
-                                          {StrId::STR_MIN_15, StrId::STR_MIN_30, StrId::STR_MIN_45,
-                                           StrId::STR_MIN_60},
-                                          "dailyGoalTarget", StrId::STR_APPS));
-  appSettings.push_back(SettingInfo::Toggle(StrId::STR_SHOW_AFTER_READING, &CrossPointSettings::showStatsAfterReading,
-                                            "showStatsAfterReading", StrId::STR_APPS));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_RESET, SettingAction::ResetReadingStats));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_EXPORT, SettingAction::ExportReadingStats));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_IMPORT, SettingAction::ImportReadingStats));
-  appSettings.push_back(SettingInfo::Section(StrId::STR_ACHIEVEMENTS));
-  appSettings.push_back(SettingInfo::Toggle(StrId::STR_ENABLE_ACHIEVEMENTS, &CrossPointSettings::achievementsEnabled,
-                                            "achievementsEnabled", StrId::STR_APPS));
-  appSettings.push_back(SettingInfo::Toggle(StrId::STR_ACHIEVEMENT_POPUPS, &CrossPointSettings::achievementPopups,
-                                            "achievementPopups", StrId::STR_APPS));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_RESET_ACHIEVEMENTS, SettingAction::ResetAchievements));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_SYNC_WITH_PREV_STATS, SettingAction::SyncAchievementsFromStats));
-  appSettings.push_back(SettingInfo::Section(StrId::STR_SHORTCUTS_SECTION));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_SHORTCUT_LOCATION, SettingAction::ShortcutLocation));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_SHORTCUT_VISIBILITY, SettingAction::ShortcutVisibility));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_ORDER_HOME_SHORTCUTS, SettingAction::OrderHomeShortcuts));
-  appSettings.push_back(SettingInfo::Action(StrId::STR_ORDER_APPS_SHORTCUTS, SettingAction::OrderAppsShortcuts));
+  appendSettingsPointers(readerSettings, getReaderExtraSettings());
+  appendSettingsPointers(controlsSettings, getControlsExtraSettings());
+  appendSettingsPointers(systemSettings, getSystemExtraSettings());
+  appendSettingsPointers(appSettings, getAppExtraSettings());
   settingsListsBuilt = true;
 }
 
@@ -255,7 +348,8 @@ bool SettingsActivity::isSelectableSetting(const int settingIndex) const {
   if (!currentSettings || settingIndex < 0 || settingIndex >= settingsCount) {
     return false;
   }
-  return (*currentSettings)[settingIndex].type != SettingType::SECTION;
+  const auto* setting = (*currentSettings)[settingIndex];
+  return setting != nullptr && setting->type != SettingType::SECTION;
 }
 
 int SettingsActivity::firstSelectableSettingIndex() const {
@@ -363,7 +457,11 @@ void SettingsActivity::toggleCurrentSetting() {
     return;
   }
 
-  const auto& setting = (*currentSettings)[selectedSetting];
+  const auto* settingPtr = (*currentSettings)[selectedSetting];
+  if (settingPtr == nullptr) {
+    return;
+  }
+  const auto& setting = *settingPtr;
 
   if (setting.type == SettingType::TOGGLE && setting.valuePtr != nullptr) {
     // Toggle the boolean value using the member pointer
@@ -528,7 +626,7 @@ void SettingsActivity::renderAppSettingsList(const Rect& rect) const {
   int totalHeight = 0;
   for (int index = 0; index < settingsCount; ++index) {
     itemOffsets[index] = totalHeight;
-    totalHeight += getItemHeight(settings[index]);
+    totalHeight += getItemHeight(*settings[index]);
   }
 
   int firstVisibleIndex = 0;
@@ -536,15 +634,15 @@ void SettingsActivity::renderAppSettingsList(const Rect& rect) const {
   if (selectedSettingIndex > 0) {
     const int selectedIndex = std::clamp(selectedSettingIndex - 1, 0, settingsCount - 1);
     for (int index = 0; index <= selectedIndex; ++index) {
-      visibleWindowHeight += getItemHeight(settings[index]);
+      visibleWindowHeight += getItemHeight(*settings[index]);
       while (visibleWindowHeight > viewportHeight && firstVisibleIndex <= index) {
-        visibleWindowHeight -= getItemHeight(settings[firstVisibleIndex]);
+        visibleWindowHeight -= getItemHeight(*settings[firstVisibleIndex]);
         ++firstVisibleIndex;
       }
     }
 
-    if (firstVisibleIndex > 0 && settings[firstVisibleIndex - 1].type == SettingType::SECTION) {
-      const int headerHeight = getItemHeight(settings[firstVisibleIndex - 1]);
+    if (firstVisibleIndex > 0 && settings[firstVisibleIndex - 1]->type == SettingType::SECTION) {
+      const int headerHeight = getItemHeight(*settings[firstVisibleIndex - 1]);
       if (visibleWindowHeight + headerHeight <= viewportHeight) {
         --firstVisibleIndex;
         visibleWindowHeight += headerHeight;
@@ -556,7 +654,7 @@ void SettingsActivity::renderAppSettingsList(const Rect& rect) const {
   int renderedHeight = 0;
 
   for (int index = firstVisibleIndex; index < settingsCount; ++index) {
-    const auto& setting = settings[index];
+    const auto& setting = *settings[index];
     const int itemHeight = getItemHeight(setting);
     if (renderedHeight + itemHeight > viewportHeight) {
       break;
@@ -641,8 +739,8 @@ void SettingsActivity::render(RenderLock&&) {
   } else {
     const auto& settings = *currentSettings;
     GUI.drawList(renderer, listRect, settingsCount, selectedSettingIndex - 1,
-                 [&settings](int index) { return std::string(getSettingNameText(settings[index])); }, nullptr, nullptr,
-                 [&settings](int i) { return getSettingValueText(settings[i]); }, true);
+                 [&settings](int index) { return std::string(getSettingNameText(*settings[index])); }, nullptr, nullptr,
+                 [&settings](int i) { return getSettingValueText(*settings[i]); }, true);
   }
 
   // Draw help text
@@ -650,10 +748,11 @@ void SettingsActivity::render(RenderLock&&) {
   if (selectedSettingIndex == 0) {
     confirmLabel = I18N.get(categoryNames[(selectedCategoryIndex + 1) % categoryCount]);
   } else {
-    const auto& selectedSetting = (*currentSettings)[selectedSettingIndex - 1];
-    confirmLabel =
-        (selectedSetting.type == SettingType::ACTION || selectedSetting.type == SettingType::SECTION) ? tr(STR_SELECT)
-                                                                                                       : tr(STR_TOGGLE);
+    const auto* selectedSetting = (*currentSettings)[selectedSettingIndex - 1];
+    confirmLabel = (selectedSetting != nullptr &&
+                    (selectedSetting->type == SettingType::ACTION || selectedSetting->type == SettingType::SECTION))
+                       ? tr(STR_SELECT)
+                       : tr(STR_TOGGLE);
   }
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), confirmLabel, tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);

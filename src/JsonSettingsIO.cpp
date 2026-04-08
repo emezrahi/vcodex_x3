@@ -15,8 +15,8 @@
 #include "AchievementsStore.h"
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
-#include "SettingsList.h"
 #include "WifiCredentialStore.h"
+#include "activities/settings/SettingsActivity.h"
 #include "util/BookIdentity.h"
 #include "util/ShortcutRegistry.h"
 #include "util/TimeZoneRegistry.h"
@@ -83,6 +83,151 @@ bool loadJsonDocumentFromFile(const char* moduleName, const char* path, JsonDocu
     return false;
   }
   return true;
+}
+
+// Keep settings persistence independent from the large shared web/device settings list.
+// Constructing that shared list pulls in many std::function-backed entries that the device
+// does not need just to load/save /.crosspoint/settings.json.
+const std::vector<SettingInfo>& getPersistedSettingsList() {
+  static const std::vector<SettingInfo> list = {
+      SettingInfo::Enum(StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen,
+                        {StrId::STR_DARK, StrId::STR_LIGHT, StrId::STR_CUSTOM, StrId::STR_COVER, StrId::STR_NONE_OPT,
+                         StrId::STR_COVER_CUSTOM},
+                        "sleepScreen", StrId::STR_CAT_DISPLAY),
+      SettingInfo::Enum(StrId::STR_SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode,
+                        {StrId::STR_FIT, StrId::STR_CROP}, "sleepScreenCoverMode", StrId::STR_CAT_DISPLAY),
+      SettingInfo::Enum(StrId::STR_SLEEP_COVER_FILTER, &CrossPointSettings::sleepScreenCoverFilter,
+                        {StrId::STR_NONE_OPT, StrId::STR_FILTER_CONTRAST, StrId::STR_INVERTED},
+                        "sleepScreenCoverFilter", StrId::STR_CAT_DISPLAY),
+      SettingInfo::Enum(StrId::STR_HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage,
+                        {StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS}, "hideBatteryPercentage",
+                        StrId::STR_CAT_DISPLAY),
+      SettingInfo::Enum(
+          StrId::STR_REFRESH_FREQ, &CrossPointSettings::refreshFrequency,
+          {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30},
+          "refreshFrequency", StrId::STR_CAT_DISPLAY),
+      SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
+                        {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED,
+                         StrId::STR_THEME_LYRA_CUSTOM},
+                        "uiTheme", StrId::STR_CAT_DISPLAY),
+      SettingInfo::Toggle(StrId::STR_DARK_MODE, &CrossPointSettings::darkMode, "darkMode", StrId::STR_CAT_DISPLAY),
+      SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
+                          StrId::STR_CAT_DISPLAY),
+
+      SettingInfo::Toggle(StrId::STR_DISPLAY_DAY, &CrossPointSettings::displayDay, "displayDay", StrId::STR_APPS),
+      SettingInfo::Toggle(StrId::STR_AUTO_SYNC_DAY, &CrossPointSettings::autoSyncDay, "autoSyncDay", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_DATE_FORMAT, &CrossPointSettings::dateFormat,
+                        {StrId::STR_DATE_FORMAT_DD_MM_YYYY, StrId::STR_DATE_FORMAT_MM_DD_YYYY,
+                         StrId::STR_DATE_FORMAT_YYYY_MM_DD},
+                        "dateFormat", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_DAILY_GOAL, &CrossPointSettings::dailyGoalTarget,
+                        {StrId::STR_MIN_15, StrId::STR_MIN_30, StrId::STR_MIN_45, StrId::STR_MIN_60},
+                        "dailyGoalTarget", StrId::STR_APPS),
+      SettingInfo::Toggle(StrId::STR_SHOW_AFTER_READING, &CrossPointSettings::showStatsAfterReading,
+                          "showStatsAfterReading", StrId::STR_APPS),
+      SettingInfo::Toggle(StrId::STR_ENABLE_ACHIEVEMENTS, &CrossPointSettings::achievementsEnabled,
+                          "achievementsEnabled", StrId::STR_APPS),
+      SettingInfo::Toggle(StrId::STR_ACHIEVEMENT_POPUPS, &CrossPointSettings::achievementPopups,
+                          "achievementPopups", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_BROWSE_FILES, &CrossPointSettings::browseFilesShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "browseFilesShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_STATS_SHORTCUT, &CrossPointSettings::statsShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "statsShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_SYNC_DAY, &CrossPointSettings::syncDayShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "syncDayShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_SETTINGS_TITLE, &CrossPointSettings::settingsShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "settingsShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_READING_STATS, &CrossPointSettings::readingStatsShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingStatsShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_READING_HEATMAP, &CrossPointSettings::readingHeatmapShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingHeatmapShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_ACHIEVEMENTS, &CrossPointSettings::achievementsShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "achievementsShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_IF_FOUND_RETURN_ME, &CrossPointSettings::ifFoundShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "ifFoundShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_README, &CrossPointSettings::readMeShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readMeShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_MENU_RECENT_BOOKS, &CrossPointSettings::recentBooksShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "recentBooksShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_BOOKMARKS, &CrossPointSettings::bookmarksShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "bookmarksShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_FILE_TRANSFER, &CrossPointSettings::fileTransferShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "fileTransferShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_SLEEP, &CrossPointSettings::sleepShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "sleepShortcut", StrId::STR_APPS),
+
+      SettingInfo::Enum(StrId::STR_FONT_FAMILY, &CrossPointSettings::fontFamily,
+                        {StrId::STR_BOOKERLY, StrId::STR_NOTO_SANS, StrId::STR_LEXEND}, "fontFamily",
+                        StrId::STR_CAT_READER),
+      SettingInfo::Enum(StrId::STR_FONT_SIZE, &CrossPointSettings::fontSize,
+                        {StrId::STR_X_SMALL, StrId::STR_SMALL, StrId::STR_MEDIUM, StrId::STR_LARGE,
+                         StrId::STR_X_LARGE},
+                        "fontSize", StrId::STR_CAT_READER),
+      SettingInfo::Enum(StrId::STR_LINE_SPACING, &CrossPointSettings::lineSpacing,
+                        {StrId::STR_TIGHT, StrId::STR_NORMAL, StrId::STR_WIDE}, "lineSpacing", StrId::STR_CAT_READER),
+      SettingInfo::Value(StrId::STR_SCREEN_MARGIN, &CrossPointSettings::screenMargin, {5, 40, 5}, "screenMargin",
+                         StrId::STR_CAT_READER),
+      SettingInfo::Enum(StrId::STR_PARA_ALIGNMENT, &CrossPointSettings::paragraphAlignment,
+                        {StrId::STR_JUSTIFY, StrId::STR_ALIGN_LEFT, StrId::STR_CENTER, StrId::STR_ALIGN_RIGHT,
+                         StrId::STR_BOOK_S_STYLE},
+                        "paragraphAlignment", StrId::STR_CAT_READER),
+      SettingInfo::Toggle(StrId::STR_EMBEDDED_STYLE, &CrossPointSettings::embeddedStyle, "embeddedStyle",
+                          StrId::STR_CAT_READER),
+      SettingInfo::Toggle(StrId::STR_HYPHENATION, &CrossPointSettings::hyphenationEnabled, "hyphenationEnabled",
+                          StrId::STR_CAT_READER),
+      SettingInfo::Enum(StrId::STR_ORIENTATION, &CrossPointSettings::orientation,
+                        {StrId::STR_PORTRAIT, StrId::STR_LANDSCAPE_CW, StrId::STR_INVERTED, StrId::STR_LANDSCAPE_CCW},
+                        "orientation", StrId::STR_CAT_READER),
+      SettingInfo::Toggle(StrId::STR_EXTRA_SPACING, &CrossPointSettings::extraParagraphSpacing,
+                          "extraParagraphSpacing", StrId::STR_CAT_READER),
+      SettingInfo::Toggle(StrId::STR_TEXT_AA, &CrossPointSettings::textAntiAliasing, "textAntiAliasing",
+                          StrId::STR_CAT_READER),
+      SettingInfo::Enum(StrId::STR_TEXT_DARKNESS, &CrossPointSettings::textDarkness,
+                        {StrId::STR_NORMAL, StrId::STR_DARK, StrId::STR_EXTRA_DARK}, "textDarkness",
+                        StrId::STR_CAT_READER),
+      SettingInfo::Enum(StrId::STR_IMAGES, &CrossPointSettings::imageRendering,
+                        {StrId::STR_IMAGES_DISPLAY, StrId::STR_IMAGES_PLACEHOLDER, StrId::STR_IMAGES_SUPPRESS},
+                        "imageRendering", StrId::STR_CAT_READER),
+
+      SettingInfo::Enum(StrId::STR_SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
+                        {StrId::STR_PREV_NEXT, StrId::STR_NEXT_PREV}, "sideButtonLayout", StrId::STR_CAT_CONTROLS),
+      SettingInfo::Toggle(StrId::STR_LONG_PRESS_SKIP, &CrossPointSettings::longPressChapterSkip,
+                          "longPressChapterSkip", StrId::STR_CAT_CONTROLS),
+      SettingInfo::Enum(StrId::STR_SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn,
+                        {StrId::STR_IGNORE, StrId::STR_SLEEP, StrId::STR_PAGE_TURN}, "shortPwrBtn",
+                        StrId::STR_CAT_CONTROLS),
+
+      SettingInfo::Enum(StrId::STR_TIME_TO_SLEEP, &CrossPointSettings::sleepTimeout,
+                        {StrId::STR_MIN_1, StrId::STR_MIN_5, StrId::STR_MIN_10, StrId::STR_MIN_15, StrId::STR_MIN_30},
+                        "sleepTimeout", StrId::STR_CAT_SYSTEM),
+      SettingInfo::Toggle(StrId::STR_SHOW_HIDDEN_FILES, &CrossPointSettings::showHiddenFiles, "showHiddenFiles",
+                          StrId::STR_CAT_SYSTEM),
+
+      SettingInfo::String(StrId::STR_OPDS_SERVER_URL, SETTINGS.opdsServerUrl, sizeof(SETTINGS.opdsServerUrl),
+                          "opdsServerUrl", StrId::STR_OPDS_BROWSER),
+      SettingInfo::String(StrId::STR_USERNAME, SETTINGS.opdsUsername, sizeof(SETTINGS.opdsUsername), "opdsUsername",
+                          StrId::STR_OPDS_BROWSER),
+      SettingInfo::String(StrId::STR_PASSWORD, SETTINGS.opdsPassword, sizeof(SETTINGS.opdsPassword), "opdsPassword",
+                          StrId::STR_OPDS_BROWSER)
+          .withObfuscated(),
+
+      SettingInfo::Toggle(StrId::STR_CHAPTER_PAGE_COUNT, &CrossPointSettings::statusBarChapterPageCount,
+                          "statusBarChapterPageCount", StrId::STR_CUSTOMISE_STATUS_BAR),
+      SettingInfo::Toggle(StrId::STR_BOOK_PROGRESS_PERCENTAGE, &CrossPointSettings::statusBarBookProgressPercentage,
+                          "statusBarBookProgressPercentage", StrId::STR_CUSTOMISE_STATUS_BAR),
+      SettingInfo::Enum(StrId::STR_PROGRESS_BAR, &CrossPointSettings::statusBarProgressBar,
+                        {StrId::STR_BOOK, StrId::STR_CHAPTER, StrId::STR_HIDE}, "statusBarProgressBar",
+                        StrId::STR_CUSTOMISE_STATUS_BAR),
+      SettingInfo::Enum(StrId::STR_PROGRESS_BAR_THICKNESS, &CrossPointSettings::statusBarProgressBarThickness,
+                        {StrId::STR_PROGRESS_BAR_THIN, StrId::STR_PROGRESS_BAR_MEDIUM, StrId::STR_PROGRESS_BAR_THICK},
+                        "statusBarProgressBarThickness", StrId::STR_CUSTOMISE_STATUS_BAR),
+      SettingInfo::Enum(StrId::STR_TITLE, &CrossPointSettings::statusBarTitle,
+                        {StrId::STR_BOOK, StrId::STR_CHAPTER, StrId::STR_HIDE}, "statusBarTitle",
+                        StrId::STR_CUSTOMISE_STATUS_BAR),
+      SettingInfo::Toggle(StrId::STR_BATTERY, &CrossPointSettings::statusBarBattery, "statusBarBattery",
+                          StrId::STR_CUSTOMISE_STATUS_BAR),
+  };
+  return list;
 }
 }  // namespace
 
@@ -169,7 +314,7 @@ bool JsonSettingsIO::loadState(CrossPointState& s, const char* json) {
 bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path) {
   JsonDocument doc;
 
-  for (const auto& info : getSettingsList()) {
+  for (const auto& info : getPersistedSettingsList()) {
     if (!info.key) continue;
     // Dynamic entries (KOReader etc.) are stored in their own files — skip.
     if (!info.valuePtr && !info.stringOffset) continue;
@@ -243,7 +388,7 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
     applyLegacyStatusBarSettings(s);
   }
 
-  for (const auto& info : getSettingsList()) {
+  for (const auto& info : getPersistedSettingsList()) {
     if (!info.key) continue;
     // Dynamic entries (KOReader etc.) are stored in their own files — skip.
     if (!info.valuePtr && !info.stringOffset) continue;
