@@ -232,6 +232,14 @@ void EpubReaderActivity::loop() {
 
   READING_STATS.tickActiveSession();
 
+  const auto powerAction =
+      ReaderUtils::consumePowerButtonReaderAction(mappedInput, pendingPowerSingleClick, pendingPowerReleaseMs);
+  if (powerAction == ReaderUtils::PowerButtonReaderAction::FullRefresh) {
+    pendingManualFullRefresh = true;
+    requestUpdate();
+    return;
+  }
+
   if (automaticPageTurnActive) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) ||
         mappedInput.wasReleased(MappedInputManager::Button::Back)) {
@@ -335,7 +343,10 @@ void EpubReaderActivity::loop() {
     return;
   }
 
-  auto [prevTriggered, nextTriggered] = ReaderUtils::detectPageTurn(mappedInput);
+  auto [prevTriggered, nextTriggered] = ReaderUtils::detectPageTurn(mappedInput, false);
+  if (powerAction == ReaderUtils::PowerButtonReaderAction::NextPage) {
+    nextTriggered = true;
+  }
   if (!prevTriggered && !nextTriggered) {
     return;
   }
@@ -699,6 +710,9 @@ void EpubReaderActivity::render(RenderLock&& lock) {
     return;
   }
 
+  const bool forceFullRefresh = pendingManualFullRefresh;
+  pendingManualFullRefresh = false;
+
   // edge case handling for sub-zero spine index
   if (currentSpineIndex < 0) {
     currentSpineIndex = 0;
@@ -713,7 +727,11 @@ void EpubReaderActivity::render(RenderLock&& lock) {
     READING_STATS.updateProgress(100, true, getStatsChapterTitle(*epub, std::max(0, currentSpineIndex - 1)), 100);
     renderer.clearScreen();
     renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_END_OF_BOOK), true, EpdFontFamily::BOLD);
-    renderer.displayBuffer();
+    if (forceFullRefresh) {
+      ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh, true);
+    } else {
+      renderer.displayBuffer();
+    }
     automaticPageTurnActive = false;
     return;
   }
@@ -810,7 +828,11 @@ void EpubReaderActivity::render(RenderLock&& lock) {
     LOG_DBG("ERS", "No pages to render");
     renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_EMPTY_CHAPTER), true, EpdFontFamily::BOLD);
     renderStatusBar();
-    renderer.displayBuffer();
+    if (forceFullRefresh) {
+      ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh, true);
+    } else {
+      renderer.displayBuffer();
+    }
     automaticPageTurnActive = false;
     return;
   }
@@ -819,7 +841,11 @@ void EpubReaderActivity::render(RenderLock&& lock) {
     LOG_DBG("ERS", "Page out of bounds: %d (max %d)", section->currentPage, section->pageCount);
     renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_OUT_OF_BOUNDS), true, EpdFontFamily::BOLD);
     renderStatusBar();
-    renderer.displayBuffer();
+    if (forceFullRefresh) {
+      ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh, true);
+    } else {
+      renderer.displayBuffer();
+    }
     automaticPageTurnActive = false;
     return;
   }
@@ -840,7 +866,8 @@ void EpubReaderActivity::render(RenderLock&& lock) {
     currentPageFootnotes = std::move(p->footnotes);
 
     const auto start = millis();
-    renderContents(std::move(p), orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+    renderContents(std::move(p), orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft,
+                   forceFullRefresh);
     LOG_DBG("ERS", "Rendered page in %dms", millis() - start);
   }
   saveProgress(currentSpineIndex, section->currentPage, section->pageCount);
@@ -883,7 +910,7 @@ void EpubReaderActivity::saveProgress(int spineIndex, int currentPage, int pageC
 }
 void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int orientedMarginTop,
                                         const int orientedMarginRight, const int orientedMarginBottom,
-                                        const int orientedMarginLeft) {
+                                        const int orientedMarginLeft, const bool forceFullRefresh) {
   const auto t0 = millis();
   auto* fcm = renderer.getFontCacheManager();
   fcm->resetStats();
@@ -902,6 +929,8 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
   const bool enableTextAA = SETTINGS.textAntiAliasing && !renderer.isDarkMode();
   const bool enableImageGrayscaleOnly = renderer.isDarkMode() && page->hasImages();
+  HalDisplay::RefreshMode configuredRefreshMode = HalDisplay::FAST_REFRESH;
+  const bool hasConfiguredRefreshMode = ReaderUtils::getConfiguredReaderRefreshMode(configuredRefreshMode);
 
   // Force special handling for pages with images when anti-aliasing is on
   bool imagePageWithAA = page->hasImages() && enableTextAA;
@@ -911,7 +940,12 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   fcm->logStats("bw_render");
   const auto tBwRender = millis();
 
-  if (imagePageWithAA) {
+  if (forceFullRefresh) {
+    ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh, true);
+  } else if (hasConfiguredRefreshMode) {
+    renderer.displayBuffer(configuredRefreshMode);
+    pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
+  } else if (imagePageWithAA) {
     // Double FAST_REFRESH with selective image blanking (pablohc's technique):
     // HALF_REFRESH sets particles too firmly for the grayscale LUT to adjust.
     // Instead, blank only the image area and do two fast refreshes.

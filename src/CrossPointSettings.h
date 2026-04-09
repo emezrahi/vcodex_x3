@@ -1,4 +1,5 @@
 #pragma once
+#include <HalDisplay.h>
 #include <HalStorage.h>
 
 #include <cstdint>
@@ -125,6 +126,14 @@ class CrossPointSettings {
     REFRESH_FREQUENCY_COUNT
   };
 
+  enum READER_REFRESH_MODE {
+    READER_REFRESH_AUTO = 0,
+    READER_REFRESH_FAST = 1,
+    READER_REFRESH_HALF = 2,
+    READER_REFRESH_FULL = 3,
+    READER_REFRESH_MODE_COUNT
+  };
+
   // Short power button press actions
   enum SHORT_PWRBTN { IGNORE = 0, SLEEP = 1, PAGE_TURN = 2, SHORT_PWRBTN_COUNT };
 
@@ -199,6 +208,8 @@ class CrossPointSettings {
   uint8_t sleepTimeout = SLEEP_10_MIN;
   // E-ink refresh frequency (default 15 pages)
   uint8_t refreshFrequency = REFRESH_15;
+  // Reader refresh override (default auto)
+  uint8_t readerRefreshMode = READER_REFRESH_AUTO;
   uint8_t hyphenationEnabled = 0;
 
   // Reader screen margin settings
@@ -306,6 +317,7 @@ class CrossPointSettings {
   unsigned long getSleepTimeoutMs() const;
   uint64_t getDailyGoalMs() const;
   int getRefreshFrequency() const;
+  bool getForcedReaderRefreshMode(HalDisplay::RefreshMode& mode) const;
 };
 
 // Helper macro to access settings

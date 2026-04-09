@@ -17,8 +17,11 @@ class XtcReaderActivity final : public Activity {
 
   uint32_t currentPage = 0;
   int pagesUntilFullRefresh = 0;
+  bool pendingPowerSingleClick = false;
+  bool pendingManualFullRefresh = false;
+  unsigned long pendingPowerReleaseMs = 0UL;
 
-  void renderPage();
+  void renderPage(bool forceFullRefresh);
   void saveProgress() const;
   void loadProgress();
 

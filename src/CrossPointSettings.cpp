@@ -318,6 +318,23 @@ int CrossPointSettings::getRefreshFrequency() const {
   }
 }
 
+bool CrossPointSettings::getForcedReaderRefreshMode(HalDisplay::RefreshMode& mode) const {
+  switch (readerRefreshMode) {
+    case READER_REFRESH_FAST:
+      mode = HalDisplay::FAST_REFRESH;
+      return true;
+    case READER_REFRESH_HALF:
+      mode = HalDisplay::HALF_REFRESH;
+      return true;
+    case READER_REFRESH_FULL:
+      mode = HalDisplay::FULL_REFRESH;
+      return true;
+    case READER_REFRESH_AUTO:
+    default:
+      return false;
+  }
+}
+
 int CrossPointSettings::getReaderFontId() const {
   switch (fontFamily) {
     case BOOKERLY:

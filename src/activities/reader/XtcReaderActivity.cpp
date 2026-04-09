@@ -19,6 +19,7 @@
 #include "AchievementsStore.h"
 #include "MappedInputManager.h"
 #include "ReadingStatsStore.h"
+#include "ReaderUtils.h"
 #include "RecentBooksStore.h"
 #include "XtcReaderChapterSelectionActivity.h"
 #include "activities/apps/ReadingStatsDetailActivity.h"
@@ -130,6 +131,14 @@ void XtcReaderActivity::onExit() {
 void XtcReaderActivity::loop() {
   READING_STATS.tickActiveSession();
 
+  const auto powerAction =
+      ReaderUtils::consumePowerButtonReaderAction(mappedInput, pendingPowerSingleClick, pendingPowerReleaseMs);
+  if (powerAction == ReaderUtils::PowerButtonReaderAction::FullRefresh) {
+    pendingManualFullRefresh = true;
+    requestUpdate();
+    return;
+  }
+
   // Enter chapter selection activity
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     if (xtc && xtc->hasChapters() && !xtc->getChapters().empty()) {
@@ -167,12 +176,12 @@ void XtcReaderActivity::loop() {
                                                     mappedInput.wasPressed(MappedInputManager::Button::Left))
                                                  : (mappedInput.wasReleased(MappedInputManager::Button::PageBack) ||
                                                     mappedInput.wasReleased(MappedInputManager::Button::Left));
-  const bool powerPageTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
-                             mappedInput.wasReleased(MappedInputManager::Button::Power);
   const bool nextTriggered = usePressForPageTurn
-                                 ? (mappedInput.wasPressed(MappedInputManager::Button::PageForward) || powerPageTurn ||
+                                 ? (mappedInput.wasPressed(MappedInputManager::Button::PageForward) ||
+                                    powerAction == ReaderUtils::PowerButtonReaderAction::NextPage ||
                                     mappedInput.wasPressed(MappedInputManager::Button::Right))
-                                 : (mappedInput.wasReleased(MappedInputManager::Button::PageForward) || powerPageTurn ||
+                                 : (mappedInput.wasReleased(MappedInputManager::Button::PageForward) ||
+                                    powerAction == ReaderUtils::PowerButtonReaderAction::NextPage ||
                                     mappedInput.wasReleased(MappedInputManager::Button::Right));
 
   if (!prevTriggered && !nextTriggered) {
@@ -212,6 +221,9 @@ void XtcReaderActivity::render(RenderLock&&) {
     return;
   }
 
+  const bool forceFullRefresh = pendingManualFullRefresh;
+  pendingManualFullRefresh = false;
+
   // Bounds check
   if (currentPage >= xtc->getPageCount()) {
     const uint32_t lastPage = (xtc->getPageCount() > 0) ? (xtc->getPageCount() - 1) : 0;
@@ -224,11 +236,11 @@ void XtcReaderActivity::render(RenderLock&&) {
     return;
   }
 
-  renderPage();
+  renderPage(forceFullRefresh);
   saveProgress();
 }
 
-void XtcReaderActivity::renderPage() {
+void XtcReaderActivity::renderPage(const bool forceFullRefresh) {
   struct DarkModeScope {
     GfxRenderer& renderer;
     bool restore;
@@ -334,13 +346,7 @@ void XtcReaderActivity::renderPage() {
     }
 
     // Display BW with conditional refresh based on pagesUntilFullRefresh
-    if (pagesUntilFullRefresh <= 1) {
-      renderer.displayBuffer(HalDisplay::HALF_REFRESH);
-      pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
-    } else {
-      renderer.displayBuffer();
-      pagesUntilFullRefresh--;
-    }
+    ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh, forceFullRefresh);
 
     // Pass 2: LSB buffer - mark DARK gray only (XTH value 1)
     // In LUT: 0 bit = apply gray effect, 1 bit = untouched
@@ -413,13 +419,7 @@ void XtcReaderActivity::renderPage() {
   // XTC pages already have status bar pre-rendered, no need to add our own
 
   // Display with appropriate refresh
-  if (pagesUntilFullRefresh <= 1) {
-    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
-    pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
-  } else {
-    renderer.displayBuffer();
-    pagesUntilFullRefresh--;
-  }
+  ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh, forceFullRefresh);
 
   LOG_DBG("XTR", "Rendered page %lu/%lu (%u-bit)", currentPage + 1, xtc->getPageCount(), bitDepth);
 }

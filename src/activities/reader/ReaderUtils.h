@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Arduino.h>
 #include <CrossPointSettings.h>
 #include <GfxRenderer.h>
 #include <Logging.h>
@@ -9,6 +10,9 @@
 namespace ReaderUtils {
 
 constexpr unsigned long GO_HOME_MS = 1000;
+constexpr unsigned long POWER_DOUBLE_CLICK_MS = 280;
+
+enum class PowerButtonReaderAction { None, NextPage, FullRefresh };
 
 inline void applyOrientation(GfxRenderer& renderer, const uint8_t orientation) {
   switch (orientation) {
@@ -34,13 +38,13 @@ struct PageTurnResult {
   bool next;
 };
 
-inline PageTurnResult detectPageTurn(const MappedInputManager& input) {
+inline PageTurnResult detectPageTurn(const MappedInputManager& input, const bool includePowerTurn = true) {
   const bool usePress = !SETTINGS.longPressChapterSkip;
   const bool prev = usePress ? (input.wasPressed(MappedInputManager::Button::PageBack) ||
                                 input.wasPressed(MappedInputManager::Button::Left))
                              : (input.wasReleased(MappedInputManager::Button::PageBack) ||
                                 input.wasReleased(MappedInputManager::Button::Left));
-  const bool powerTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
+  const bool powerTurn = includePowerTurn && SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
                          input.wasReleased(MappedInputManager::Button::Power);
   const bool next = usePress ? (input.wasPressed(MappedInputManager::Button::PageForward) || powerTurn ||
                                 input.wasPressed(MappedInputManager::Button::Right))
@@ -49,7 +53,57 @@ inline PageTurnResult detectPageTurn(const MappedInputManager& input) {
   return {prev, next};
 }
 
-inline void displayWithRefreshCycle(const GfxRenderer& renderer, int& pagesUntilFullRefresh) {
+inline PowerButtonReaderAction consumePowerButtonReaderAction(const MappedInputManager& input,
+                                                              bool& pendingPowerSingleClick,
+                                                              unsigned long& pendingPowerReleaseMs) {
+  const bool powerActsAsPageTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN;
+  const unsigned long now = millis();
+
+  if (pendingPowerSingleClick && (now - pendingPowerReleaseMs) > POWER_DOUBLE_CLICK_MS) {
+    pendingPowerSingleClick = false;
+    if (powerActsAsPageTurn) {
+      return PowerButtonReaderAction::NextPage;
+    }
+  }
+
+  if (!input.wasReleased(MappedInputManager::Button::Power)) {
+    return PowerButtonReaderAction::None;
+  }
+
+  if (input.getHeldTime() >= SETTINGS.getPowerButtonDuration()) {
+    pendingPowerSingleClick = false;
+    return PowerButtonReaderAction::None;
+  }
+
+  if (pendingPowerSingleClick && (now - pendingPowerReleaseMs) <= POWER_DOUBLE_CLICK_MS) {
+    pendingPowerSingleClick = false;
+    return PowerButtonReaderAction::FullRefresh;
+  }
+
+  pendingPowerSingleClick = true;
+  pendingPowerReleaseMs = now;
+  return PowerButtonReaderAction::None;
+}
+
+inline bool getConfiguredReaderRefreshMode(HalDisplay::RefreshMode& mode) {
+  return SETTINGS.getForcedReaderRefreshMode(mode);
+}
+
+inline void displayWithRefreshCycle(const GfxRenderer& renderer, int& pagesUntilFullRefresh,
+                                    const bool forceFullRefresh = false) {
+  if (forceFullRefresh) {
+    renderer.displayBuffer(HalDisplay::FULL_REFRESH);
+    pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
+    return;
+  }
+
+  HalDisplay::RefreshMode configuredMode;
+  if (getConfiguredReaderRefreshMode(configuredMode)) {
+    renderer.displayBuffer(configuredMode);
+    pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
+    return;
+  }
+
   if (pagesUntilFullRefresh <= 1) {
     // In dark mode, the stronger maintenance refresh causes a visible white flash
     // on X4. Keep the cadence counter, but use FAST_REFRESH to preserve the dark

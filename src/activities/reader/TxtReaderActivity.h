@@ -13,6 +13,9 @@ class TxtReaderActivity final : public Activity {
   int currentPage = 0;
   int totalPages = 1;
   int pagesUntilFullRefresh = 0;
+  bool pendingPowerSingleClick = false;
+  bool pendingManualFullRefresh = false;
+  unsigned long pendingPowerReleaseMs = 0UL;
 
   // Streaming text reader - stores file offsets for each page
   std::vector<size_t> pageOffsets;  // File offset for start of each page
@@ -31,7 +34,7 @@ class TxtReaderActivity final : public Activity {
   int cachedOrientedMarginBottom = 0;
   int cachedOrientedMarginLeft = 0;
 
-  void renderPage();
+  void renderPage(bool forceFullRefresh);
   void renderStatusBar() const;
 
   void initializeReader();

@@ -175,6 +175,9 @@ const std::vector<SettingInfo>& getDeviceReaderSettings() {
                         {StrId::STR_NORMAL, StrId::STR_DARK, StrId::STR_EXTRA_DARK}),
       SettingInfo::Enum(StrId::STR_IMAGES, &CrossPointSettings::imageRendering,
                         {StrId::STR_IMAGES_DISPLAY, StrId::STR_IMAGES_PLACEHOLDER, StrId::STR_IMAGES_SUPPRESS}),
+      SettingInfo::Enum(StrId::STR_READER_REFRESH_MODE, &CrossPointSettings::readerRefreshMode,
+                        {StrId::STR_REFRESH_MODE_AUTO, StrId::STR_REFRESH_MODE_FAST, StrId::STR_REFRESH_MODE_HALF,
+                         StrId::STR_REFRESH_MODE_FULL}),
   };
   return items;
 }

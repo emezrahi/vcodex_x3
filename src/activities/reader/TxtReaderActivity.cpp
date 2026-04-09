@@ -96,6 +96,14 @@ void TxtReaderActivity::onExit() {
 void TxtReaderActivity::loop() {
   READING_STATS.tickActiveSession();
 
+  const auto powerAction =
+      ReaderUtils::consumePowerButtonReaderAction(mappedInput, pendingPowerSingleClick, pendingPowerReleaseMs);
+  if (powerAction == ReaderUtils::PowerButtonReaderAction::FullRefresh) {
+    pendingManualFullRefresh = true;
+    requestUpdate();
+    return;
+  }
+
   // Long press BACK (1s+) goes to file selection
   if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= ReaderUtils::GO_HOME_MS) {
     READING_STATS.endSession();
@@ -112,7 +120,10 @@ void TxtReaderActivity::loop() {
     return;
   }
 
-  auto [prevTriggered, nextTriggered] = ReaderUtils::detectPageTurn(mappedInput);
+  auto [prevTriggered, nextTriggered] = ReaderUtils::detectPageTurn(mappedInput, false);
+  if (powerAction == ReaderUtils::PowerButtonReaderAction::NextPage) {
+    nextTriggered = true;
+  }
   if (!prevTriggered && !nextTriggered) {
     return;
   }
@@ -340,6 +351,9 @@ void TxtReaderActivity::render(RenderLock&&) {
     return;
   }
 
+  const bool forceFullRefresh = pendingManualFullRefresh;
+  pendingManualFullRefresh = false;
+
   // Initialize reader if not done
   if (!initialized) {
     initializeReader();
@@ -363,13 +377,13 @@ void TxtReaderActivity::render(RenderLock&&) {
   loadPageAtOffset(offset, currentPageLines, nextOffset);
 
   renderer.clearScreen();
-  renderPage();
+  renderPage(forceFullRefresh);
 
   // Save progress
   saveProgress();
 }
 
-void TxtReaderActivity::renderPage() {
+void TxtReaderActivity::renderPage(const bool forceFullRefresh) {
   const int lineHeight = renderer.getLineHeight(cachedFontId);
   const int contentWidth = viewportWidth;
 
@@ -418,7 +432,7 @@ void TxtReaderActivity::renderPage() {
   renderLines();
   renderStatusBar();
 
-  ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh);
+  ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh, forceFullRefresh);
 
   if (SETTINGS.textAntiAliasing) {
     ReaderUtils::renderAntiAliased(renderer, [&renderLines]() { renderLines(); });

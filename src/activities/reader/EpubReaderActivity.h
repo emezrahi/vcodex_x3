@@ -28,8 +28,11 @@ class EpubReaderActivity final : public Activity {
   bool pendingScreenshot = false;
   bool skipNextButtonCheck = false;  // Skip button processing for one frame after subactivity exit
   bool automaticPageTurnActive = false;
+  bool pendingPowerSingleClick = false;
+  bool pendingManualFullRefresh = false;
   int initialBookmarkSpineIndex = -1;
   int initialBookmarkPage = -1;
+  unsigned long pendingPowerReleaseMs = 0UL;
   std::string stableBookId;
   BookmarkStore bookmarkStore;
 
@@ -44,7 +47,7 @@ class EpubReaderActivity final : public Activity {
   int footnoteDepth = 0;
 
   void renderContents(std::unique_ptr<Page> page, int orientedMarginTop, int orientedMarginRight,
-                      int orientedMarginBottom, int orientedMarginLeft);
+                      int orientedMarginBottom, int orientedMarginLeft, bool forceFullRefresh);
   void renderStatusBar() const;
   void saveProgress(int spineIndex, int currentPage, int pageCount);
   // Jump to a percentage of the book (0-100), mapping it to spine and page.
