@@ -18,6 +18,7 @@ constexpr unsigned long MAX_READING_GAP_MS = 30UL * 60UL * 1000UL;
 constexpr unsigned long SESSION_HEARTBEAT_MS = 60UL * 1000UL;
 constexpr unsigned long DEFERRED_SAVE_INTERVAL_MS = 30UL * 1000UL;
 constexpr uint64_t MIN_SESSION_READING_MS = 3ULL * 60ULL * 1000ULL;
+constexpr size_t MAX_SESSION_LOG_ENTRIES = 256;
 
 uint8_t clampPercent(const uint8_t percent) { return std::min<uint8_t>(percent, 100); }
 
@@ -423,6 +424,18 @@ void ReadingStatsStore::recordReadingTime(ReadingBookStats& book, const uint32_t
   getOrCreateReadingDay(epochSeconds).readingMs += readingMs;
 }
 
+void ReadingStatsStore::appendSessionLogEntry(const uint32_t dayOrdinal, const uint32_t sessionMs) {
+  if (dayOrdinal == 0 || sessionMs == 0) {
+    return;
+  }
+
+  sessionLog.push_back(ReadingSessionLogEntry{dayOrdinal, sessionMs});
+  if (sessionLog.size() > MAX_SESSION_LOG_ENTRIES) {
+    sessionLog.erase(sessionLog.begin(),
+                     sessionLog.begin() + static_cast<std::ptrdiff_t>(sessionLog.size() - MAX_SESSION_LOG_ENTRIES));
+  }
+}
+
 void ReadingStatsStore::rebuildAggregatedReadingDays() {
   readingDays = legacyReadingDays;
   normalizeReadingDays(readingDays);
@@ -734,6 +747,10 @@ void ReadingStatsStore::endSession() {
   if (countedSession) {
     book.sessions++;
     book.lastSessionMs = sessionMs;
+    const uint32_t sessionTimestamp = getReferenceTimestamp(TimeUtils::getAuthoritativeTimestamp(), book.lastReadAt);
+    if (isClockValid(sessionTimestamp)) {
+      appendSessionLogEntry(TimeUtils::getLocalDayOrdinal(sessionTimestamp), sessionMs);
+    }
     markDirty();
   }
 
@@ -838,6 +855,7 @@ void ReadingStatsStore::reset() {
   books.clear();
   legacyReadingDays.clear();
   readingDays.clear();
+  sessionLog.clear();
   activeSession = {};
   lastSessionSnapshot = {};
   markDirty();
@@ -866,6 +884,10 @@ bool ReadingStatsStore::importFromFile(const std::string& path) {
   activeSession = {};
   lastSessionSnapshot = {};
   sessionSerialCounter = 0;
+  if (sessionLog.size() > MAX_SESSION_LOG_ENTRIES) {
+    sessionLog.erase(sessionLog.begin(),
+                     sessionLog.begin() + static_cast<std::ptrdiff_t>(sessionLog.size() - MAX_SESSION_LOG_ENTRIES));
+  }
   removeIgnoredBooks();
   rebuildAggregatedReadingDays();
   const uint32_t latestKnownTimestamp = getLatestKnownTimestamp();
@@ -906,6 +928,11 @@ bool ReadingStatsStore::loadFromFile() {
     activeSession = {};
     lastSessionSnapshot = {};
     sessionSerialCounter = 0;
+    if (sessionLog.size() > MAX_SESSION_LOG_ENTRIES) {
+      sessionLog.erase(sessionLog.begin(),
+                       sessionLog.begin() +
+                           static_cast<std::ptrdiff_t>(sessionLog.size() - MAX_SESSION_LOG_ENTRIES));
+    }
     invalidateSummaryCache();
     if (needsSave) {
       markDirty();

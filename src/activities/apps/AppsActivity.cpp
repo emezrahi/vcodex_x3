@@ -10,6 +10,7 @@
 #include "IfFoundActivity.h"
 #include "ReadMeActivity.h"
 #include "ReadingHeatmapActivity.h"
+#include "ReadingProfileActivity.h"
 #include "ReadingStatsActivity.h"
 #include "SleepAppActivity.h"
 #include "SyncDayActivity.h"
@@ -131,6 +132,9 @@ void AppsActivity::openSelectedApp() {
       return;
     case ShortcutId::ReadingHeatmap:
       activity = std::make_unique<ReadingHeatmapActivity>(renderer, mappedInput);
+      break;
+    case ShortcutId::ReadingProfile:
+      activity = std::make_unique<ReadingProfileActivity>(renderer, mappedInput);
       break;
     case ShortcutId::Achievements:
       activity = std::make_unique<AchievementsActivity>(renderer, mappedInput);

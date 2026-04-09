@@ -44,6 +44,11 @@ struct ReadingSessionSnapshot {
   uint8_t endProgressPercent = 0;
 };
 
+struct ReadingSessionLogEntry {
+  uint32_t dayOrdinal = 0;
+  uint32_t sessionMs = 0;
+};
+
 class ReadingStatsStore;
 namespace JsonSettingsIO {
 bool saveReadingStats(const ReadingStatsStore& store, const char* path);
@@ -79,6 +84,7 @@ class ReadingStatsStore {
   std::vector<ReadingBookStats> books;
   std::vector<ReadingDayStats> legacyReadingDays;
   std::vector<ReadingDayStats> readingDays;
+  std::vector<ReadingSessionLogEntry> sessionLog;
   SessionState activeSession;
   ReadingSessionSnapshot lastSessionSnapshot;
   uint32_t sessionSerialCounter = 0;
@@ -109,6 +115,7 @@ class ReadingStatsStore {
   uint32_t getReferenceDayOrdinal() const;
   void updateBookReadTimestamp(ReadingBookStats& book, uint32_t preferredTimestamp);
   void recordReadingTime(ReadingBookStats& book, uint32_t epochSeconds, uint64_t readingMs);
+  void appendSessionLogEntry(uint32_t dayOrdinal, uint32_t sessionMs);
   void rebuildAggregatedReadingDays();
   bool removeIgnoredBooks();
   void invalidateSummaryCache();
@@ -142,6 +149,7 @@ class ReadingStatsStore {
 
   const std::vector<ReadingBookStats>& getBooks() const { return books; }
   const std::vector<ReadingDayStats>& getReadingDays() const { return readingDays; }
+  const std::vector<ReadingSessionLogEntry>& getSessionLog() const { return sessionLog; }
   static bool shouldIgnorePath(const std::string& path);
 
   uint32_t getBooksStartedCount() const { return static_cast<uint32_t>(books.size()); }

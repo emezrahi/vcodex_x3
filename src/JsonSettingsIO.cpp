@@ -142,6 +142,8 @@ const std::vector<SettingInfo>& getPersistedSettingsList() {
                         {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingStatsShortcut", StrId::STR_APPS),
       SettingInfo::Enum(StrId::STR_READING_HEATMAP, &CrossPointSettings::readingHeatmapShortcut,
                         {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingHeatmapShortcut", StrId::STR_APPS),
+      SettingInfo::Enum(StrId::STR_READING_PROFILE, &CrossPointSettings::readingProfileShortcut,
+                        {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "readingProfileShortcut", StrId::STR_APPS),
       SettingInfo::Enum(StrId::STR_ACHIEVEMENTS, &CrossPointSettings::achievementsShortcut,
                         {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "achievementsShortcut", StrId::STR_APPS),
       SettingInfo::Enum(StrId::STR_IF_FOUND_RETURN_ME, &CrossPointSettings::ifFoundShortcut,
@@ -348,6 +350,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["settingsShortcutOrder"] = s.settingsShortcutOrder;
   doc["readingStatsShortcutOrder"] = s.readingStatsShortcutOrder;
   doc["readingHeatmapShortcutOrder"] = s.readingHeatmapShortcutOrder;
+  doc["readingProfileShortcutOrder"] = s.readingProfileShortcutOrder;
   doc["achievementsShortcutOrder"] = s.achievementsShortcutOrder;
   doc["ifFoundShortcutOrder"] = s.ifFoundShortcutOrder;
   doc["readMeShortcutOrder"] = s.readMeShortcutOrder;
@@ -361,6 +364,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["settingsShortcutVisible"] = s.settingsShortcutVisible;
   doc["readingStatsShortcutVisible"] = s.readingStatsShortcutVisible;
   doc["readingHeatmapShortcutVisible"] = s.readingHeatmapShortcutVisible;
+  doc["readingProfileShortcutVisible"] = s.readingProfileShortcutVisible;
   doc["achievementsShortcutVisible"] = s.achievementsShortcutVisible;
   doc["ifFoundShortcutVisible"] = s.ifFoundShortcutVisible;
   doc["readMeShortcutVisible"] = s.readMeShortcutVisible;
@@ -493,6 +497,8 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
                                       shortcutOrderCount, s.readingStatsShortcutOrder);
   s.readingHeatmapShortcutOrder = clamp(doc["readingHeatmapShortcutOrder"] | s.readingHeatmapShortcutOrder,
                                         shortcutOrderCount, s.readingHeatmapShortcutOrder);
+  s.readingProfileShortcutOrder = clamp(doc["readingProfileShortcutOrder"] | s.readingProfileShortcutOrder,
+                                        shortcutOrderCount, s.readingProfileShortcutOrder);
   s.achievementsShortcutOrder = clamp(doc["achievementsShortcutOrder"] | s.achievementsShortcutOrder,
                                       shortcutOrderCount, s.achievementsShortcutOrder);
   s.ifFoundShortcutOrder =
@@ -523,6 +529,9 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   s.readingHeatmapShortcutVisible =
       clamp(doc["readingHeatmapShortcutVisible"] | s.readingHeatmapShortcutVisible, static_cast<uint8_t>(2),
             s.readingHeatmapShortcutVisible);
+  s.readingProfileShortcutVisible =
+      clamp(doc["readingProfileShortcutVisible"] | s.readingProfileShortcutVisible, static_cast<uint8_t>(2),
+            s.readingProfileShortcutVisible);
   s.achievementsShortcutVisible =
       clamp(doc["achievementsShortcutVisible"] | s.achievementsShortcutVisible, static_cast<uint8_t>(2),
             s.achievementsShortcutVisible);
@@ -712,7 +721,7 @@ bool JsonSettingsIO::loadRecentBooksFromFile(RecentBooksStore& store, const char
 
 bool JsonSettingsIO::saveReadingStats(const ReadingStatsStore& store, const char* path) {
   JsonDocument doc;
-  doc["formatVersion"] = 3;
+  doc["formatVersion"] = 4;
 
   JsonArray days = doc["readingDays"].to<JsonArray>();
   for (const auto& day : store.getReadingDays()) {
@@ -726,6 +735,13 @@ bool JsonSettingsIO::saveReadingStats(const ReadingStatsStore& store, const char
     JsonObject dayObj = legacyDays.add<JsonObject>();
     dayObj["dayOrdinal"] = day.dayOrdinal;
     dayObj["readingMs"] = day.readingMs;
+  }
+
+  JsonArray sessionLog = doc["sessionLog"].to<JsonArray>();
+  for (const auto& session : store.getSessionLog()) {
+    JsonObject sessionObj = sessionLog.add<JsonObject>();
+    sessionObj["dayOrdinal"] = session.dayOrdinal;
+    sessionObj["sessionMs"] = session.sessionMs;
   }
 
   JsonArray books = doc["books"].to<JsonArray>();
@@ -772,6 +788,7 @@ bool JsonSettingsIO::loadReadingStats(ReadingStatsStore& store, const char* json
   store.books.clear();
   store.legacyReadingDays.clear();
   store.readingDays.clear();
+  store.sessionLog.clear();
   store.dirty = false;
 
   const uint32_t formatVersion = doc["formatVersion"] | static_cast<uint32_t>(1);
@@ -798,6 +815,19 @@ bool JsonSettingsIO::loadReadingStats(ReadingStatsStore& store, const char* json
     appendReadingDays(store.legacyReadingDays, doc["legacyReadingDays"].as<JsonArray>());
   } else {
     store.legacyReadingDays = store.readingDays;
+  }
+
+  if (formatVersion >= 4) {
+    for (JsonObject sessionObj : doc["sessionLog"].as<JsonArray>()) {
+      ReadingSessionLogEntry session;
+      session.dayOrdinal = sessionObj["dayOrdinal"] | static_cast<uint32_t>(0);
+      session.sessionMs = sessionObj["sessionMs"] | static_cast<uint32_t>(0);
+      if (session.dayOrdinal != 0 && session.sessionMs != 0) {
+        store.sessionLog.push_back(session);
+      }
+    }
+  } else {
+    store.dirty = true;
   }
 
   JsonArray books = doc["books"].as<JsonArray>();
@@ -849,6 +879,7 @@ bool JsonSettingsIO::loadReadingStatsFromFile(ReadingStatsStore& store, const ch
   store.books.clear();
   store.legacyReadingDays.clear();
   store.readingDays.clear();
+  store.sessionLog.clear();
   store.dirty = false;
 
   const uint32_t formatVersion = doc["formatVersion"] | static_cast<uint32_t>(1);
@@ -875,6 +906,19 @@ bool JsonSettingsIO::loadReadingStatsFromFile(ReadingStatsStore& store, const ch
     appendReadingDays(store.legacyReadingDays, doc["legacyReadingDays"].as<JsonArray>());
   } else {
     store.legacyReadingDays = store.readingDays;
+  }
+
+  if (formatVersion >= 4) {
+    for (JsonObject sessionObj : doc["sessionLog"].as<JsonArray>()) {
+      ReadingSessionLogEntry session;
+      session.dayOrdinal = sessionObj["dayOrdinal"] | static_cast<uint32_t>(0);
+      session.sessionMs = sessionObj["sessionMs"] | static_cast<uint32_t>(0);
+      if (session.dayOrdinal != 0 && session.sessionMs != 0) {
+        store.sessionLog.push_back(session);
+      }
+    }
+  } else {
+    store.dirty = true;
   }
 
   JsonArray books = doc["books"].as<JsonArray>();
