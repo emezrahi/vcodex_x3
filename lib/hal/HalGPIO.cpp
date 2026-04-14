@@ -6,6 +6,9 @@
 #include <Wire.h>
 #include <esp_sleep.h>
 
+// Global HalGPIO instance
+HalGPIO gpio;
+
 namespace X3GPIO {
 
 struct X3ProbeResult {
@@ -145,6 +148,8 @@ HalGPIO::DeviceType nvsToDeviceType(NvsDeviceValue value) {
 }
 
 HalGPIO::DeviceType detectDeviceTypeWithFingerprint() {
+  // Explicit override for recovery/support:
+  // 0 = auto, 1 = force X4, 2 = force X3
   const NvsDeviceValue overrideValue = readNvsDeviceValue(NVS_KEY_DEV_OVERRIDE, NvsDeviceValue::Unknown);
   if (overrideValue == NvsDeviceValue::X3 || overrideValue == NvsDeviceValue::X4) {
     LOG_INF("HW", "Device override active: %s", overrideValue == NvsDeviceValue::X3 ? "X3" : "X4");
@@ -157,6 +162,7 @@ HalGPIO::DeviceType detectDeviceTypeWithFingerprint() {
     return nvsToDeviceType(cachedValue);
   }
 
+  // No cache yet: run active X3 fingerprint probe and persist result.
   const X3GPIO::X3ProbeResult pass1 = X3GPIO::runX3ProbePass();
   delay(2);
   const X3GPIO::X3ProbeResult pass2 = X3GPIO::runX3ProbePass();
@@ -165,7 +171,6 @@ HalGPIO::DeviceType detectDeviceTypeWithFingerprint() {
   const uint8_t score2 = pass2.score();
   LOG_INF("HW", "X3 probe scores: pass1=%u(bq=%d rtc=%d imu=%d) pass2=%u(bq=%d rtc=%d imu=%d)", score1, pass1.bq27220,
           pass1.ds3231, pass1.qmi8658, score2, pass2.bq27220, pass2.ds3231, pass2.qmi8658);
-
   const bool x3Confirmed = (score1 >= 2) && (score2 >= 2);
   const bool x4Confirmed = (score1 == 0) && (score2 == 0);
 
@@ -179,6 +184,7 @@ HalGPIO::DeviceType detectDeviceTypeWithFingerprint() {
     return HalGPIO::DeviceType::X4;
   }
 
+  // Conservative fallback for first boot with inconclusive probes.
   return HalGPIO::DeviceType::X4;
 }
 
@@ -219,10 +225,12 @@ bool HalGPIO::wasAnyReleased() const { return inputMgr.wasAnyReleased(); }
 unsigned long HalGPIO::getHeldTime() const { return inputMgr.getHeldTime(); }
 
 void HalGPIO::startDeepSleep() {
+  // Ensure that the power button has been released to avoid immediately turning back on if you're holding it
   while (inputMgr.isPressed(BTN_POWER)) {
     delay(50);
     inputMgr.update();
   }
+  // Arm the wakeup trigger after the button is released
   esp_deep_sleep_enable_gpio_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_GPIO_WAKEUP_GPIO_LOW);
   esp_deep_sleep_start();
 }
@@ -237,6 +245,7 @@ void HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPre
 
   const auto start = millis();
   inputMgr.update();
+  // inputMgr.isPressed() may take up to ~500ms to return correct state
   while (!inputMgr.isPressed(BTN_POWER) && millis() - start < 1000) {
     delay(10);
     inputMgr.update();
@@ -256,6 +265,8 @@ void HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPre
 
 bool HalGPIO::isUsbConnected() const {
   if (deviceIsX3()) {
+    // X3: infer USB/charging via BQ27220 Current() register (0x0C, signed mA).
+    // Positive current means charging.
     for (uint8_t attempt = 0; attempt < 2; ++attempt) {
       int16_t currentMa = 0;
       if (X3GPIO::readBQ27220CurrentMA(&currentMa)) {
@@ -265,7 +276,7 @@ bool HalGPIO::isUsbConnected() const {
     }
     return false;
   }
-
+  // U0RXD/GPIO20 reads HIGH when USB is connected
   return digitalRead(UART0_RXD) == HIGH;
 }
 

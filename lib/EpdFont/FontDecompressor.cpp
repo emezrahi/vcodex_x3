@@ -75,12 +75,20 @@ bool FontDecompressor::decompressGroup(const EpdFontData* fontData, uint16_t gro
 
 // --- Byte-aligned helpers ---
 
+uint32_t FontDecompressor::getAlignedStride(bool is2Bit, uint8_t width) {
+  return is2Bit ? ((width + 3) / 4) : ((width + 7) / 8);
+}
+
+uint32_t FontDecompressor::getAlignedGlyphSize(bool is2Bit, uint8_t width, uint8_t height) {
+  return width > 0 && height > 0 ? getAlignedStride(is2Bit, width) * height : 0;
+}
+
 uint32_t FontDecompressor::getAlignedOffset(const EpdFontData* fontData, uint16_t groupIndex, uint32_t glyphIndex) {
   uint32_t offset = 0;
 
   auto accumGlyph = [&](const EpdGlyph& g) {
     if (g.width > 0 && g.height > 0) {
-      offset += ((g.width + 3) / 4) * g.height;
+      offset += getAlignedGlyphSize(fontData->is2Bit, g.width, g.height);
     }
   };
 
@@ -102,11 +110,14 @@ uint32_t FontDecompressor::getAlignedOffset(const EpdFontData* fontData, uint16_
   return offset;
 }
 
-void FontDecompressor::compactSingleGlyph(const uint8_t* alignedSrc, uint8_t* packedDst, uint8_t width,
-                                          uint8_t height) {
+void FontDecompressor::compactSingleGlyph(const uint8_t* alignedSrc, uint8_t* packedDst, uint8_t width, uint8_t height,
+                                          bool is2Bit) {
   if (width == 0 || height == 0) return;
-  const uint32_t rowStride = (width + 3) / 4;
-  if (width % 4 == 0) {
+  const uint32_t rowStride = getAlignedStride(is2Bit, width);
+  const uint8_t pixelsPerByte = is2Bit ? 4 : 8;
+  const uint8_t bitsPerPixel = is2Bit ? 2 : 1;
+
+  if (width % pixelsPerByte == 0) {
     memcpy(packedDst, alignedSrc, rowStride * height);
     return;
   }
@@ -114,8 +125,11 @@ void FontDecompressor::compactSingleGlyph(const uint8_t* alignedSrc, uint8_t* pa
   uint32_t writeIdx = 0;
   for (uint8_t y = 0; y < height; y++) {
     for (uint8_t x = 0; x < width; x++) {
-      outByte = (outByte << 2) | ((alignedSrc[y * rowStride + x / 4] >> ((3 - (x % 4)) * 2)) & 0x3);
-      outBits += 2;
+      const uint8_t shift = is2Bit ? static_cast<uint8_t>((3 - (x % 4)) * 2) : static_cast<uint8_t>(7 - (x % 8));
+      const uint8_t mask = is2Bit ? 0x3 : 0x1;
+      outByte = static_cast<uint8_t>((outByte << bitsPerPixel) |
+                                     ((alignedSrc[y * rowStride + x / pixelsPerByte] >> shift) & mask));
+      outBits += bitsPerPixel;
       if (outBits == 8) {
         packedDst[writeIdx++] = outByte;
         outByte = 0;
@@ -205,7 +219,7 @@ const uint8_t* FontDecompressor::getBitmap(const EpdFontData* fontData, const Ep
   }
 
   uint32_t alignedOff = getAlignedOffset(fontData, groupIndex, glyphIndex);
-  compactSingleGlyph(&hotGroup[alignedOff], hotGlyphBuf.data(), glyph->width, glyph->height);
+  compactSingleGlyph(&hotGroup[alignedOff], hotGlyphBuf.data(), glyph->width, glyph->height, fontData->is2Bit);
   stats.getBitmapTimeUs += micros() - tStart;
   return hotGlyphBuf.data();
 }
@@ -372,7 +386,7 @@ int FontDecompressor::prewarmCache(const EpdFontData* fontData, const char* utf8
       }
 
       if (glyph.width > 0 && glyph.height > 0) {
-        groupAlignedTracker[gpPos] += ((glyph.width + 3) / 4) * glyph.height;
+        groupAlignedTracker[gpPos] += getAlignedGlyphSize(fontData->is2Bit, glyph.width, glyph.height);
       }
     }
   } else {
@@ -398,7 +412,7 @@ int FontDecompressor::prewarmCache(const EpdFontData* fontData, const char* utf8
         }
 
         if (glyph.width > 0 && glyph.height > 0) {
-          alignedOff += ((glyph.width + 3) / 4) * glyph.height;
+          alignedOff += getAlignedGlyphSize(fontData->is2Bit, glyph.width, glyph.height);
         }
       }
     }
@@ -435,7 +449,8 @@ int FontDecompressor::prewarmCache(const EpdFontData* fontData, const char* utf8
       if (getGroupIndex(fontData, pageGlyphs[i].glyphIndex) != groupIdx) continue;
 
       const EpdGlyph& glyph = fontData->glyph[pageGlyphs[i].glyphIndex];
-      compactSingleGlyph(&tempBuf[pageGlyphs[i].alignedOffset], &pageBuffer[writeOffset], glyph.width, glyph.height);
+      compactSingleGlyph(&tempBuf[pageGlyphs[i].alignedOffset], &pageBuffer[writeOffset], glyph.width, glyph.height,
+                         fontData->is2Bit);
       pageGlyphs[i].bufferOffset = writeOffset;
       writeOffset += glyph.dataLength;
     }

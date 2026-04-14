@@ -68,29 +68,27 @@ def get_group_glyph_indices(group, group_index, glyphs, glyph_to_group):
         return list(range(first, first + group['glyphCount']))
 
 
-def compact_aligned_to_packed(aligned_data, width, height):
-    """Convert byte-aligned 2-bit bitmap to packed format (reverse of to_byte_aligned).
-
-    In byte-aligned format, each row starts at a byte boundary.
-    In packed format, pixels flow continuously across row boundaries (4 pixels/byte).
-    """
+def compact_aligned_to_packed(aligned_data, width, height, is2bit):
+    """Convert byte-aligned bitmap to packed format (reverse of to_byte_aligned)."""
     if width == 0 or height == 0:
         return b''
-    packed_size = math.ceil(width * height / 4)
+    pixels_per_byte = 4 if is2bit else 8
+    pixel_mask = 0x3 if is2bit else 0x1
+    packed_size = math.ceil(width * height / pixels_per_byte)
     packed = bytearray(packed_size)
-    row_stride = (width + 3) // 4  # bytes per byte-aligned row
+    row_stride = (width + pixels_per_byte - 1) // pixels_per_byte
 
     for y in range(height):
         for x in range(width):
             # Read pixel from byte-aligned format (row-aligned)
-            aligned_byte_idx = y * row_stride + x // 4
-            aligned_shift = (3 - (x % 4)) * 2
-            pixel = (aligned_data[aligned_byte_idx] >> aligned_shift) & 0x3
+            aligned_byte_idx = y * row_stride + x // pixels_per_byte
+            aligned_shift = (3 - (x % 4)) * 2 if is2bit else 7 - (x % 8)
+            pixel = (aligned_data[aligned_byte_idx] >> aligned_shift) & pixel_mask
 
             # Write pixel to packed format (continuous bit stream)
             packed_pos = y * width + x
-            packed_byte_idx = packed_pos // 4
-            packed_shift = (3 - (packed_pos % 4)) * 2
+            packed_byte_idx = packed_pos // pixels_per_byte
+            packed_shift = (3 - (packed_pos % 4)) * 2 if is2bit else 7 - (packed_pos % 8)
             packed[packed_byte_idx] |= (pixel << packed_shift)
 
     return bytes(packed)
@@ -100,6 +98,8 @@ def verify_font_file(filepath):
     """Verify a single font header file. Returns (font_name, success, message)."""
     with open(filepath, 'r') as f:
         content = f.read()
+
+    is2bit = bool(re.search(r'mode:\s*2-bit', content))
 
     # Check if this is a compressed font (has Groups array)
     groups_match = re.search(r'static const EpdFontGroup (\w+)Groups\[\]', content)
@@ -195,8 +195,9 @@ def verify_font_file(filepath):
                     return (font_name, False, f"group {gi}, glyph {glyph_idx}: zero-size glyph dataLength {glyph['dataLength']} != expected 0")
                 continue
 
-            aligned_size = ((width + 3) // 4) * height
-            packed_size = math.ceil(width * height / 4)
+            pixels_per_byte = 4 if is2bit else 8
+            aligned_size = ((width + pixels_per_byte - 1) // pixels_per_byte) * height
+            packed_size = math.ceil(width * height / pixels_per_byte)
 
             # Verify packed offset and size match glyph metadata
             if glyph['dataOffset'] != packed_offset:
@@ -213,7 +214,7 @@ def verify_font_file(filepath):
             aligned_glyph = decompressed[byte_aligned_offset:byte_aligned_offset + aligned_size]
 
             # Compact to packed and verify pixel values are valid (0-3 for 2-bit)
-            packed_glyph = compact_aligned_to_packed(aligned_glyph, width, height)
+            packed_glyph = compact_aligned_to_packed(aligned_glyph, width, height, is2bit)
             if len(packed_glyph) != packed_size:
                 return (font_name, False, f"group {gi}, glyph {glyph_idx}: compacted size {len(packed_glyph)} != expected {packed_size}")
 

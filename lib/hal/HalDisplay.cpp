@@ -1,6 +1,9 @@
 #include <HalDisplay.h>
 #include <HalGPIO.h>
 
+// Global HalDisplay instance
+HalDisplay display;
+
 #define SD_SPI_MISO 7
 
 HalDisplay::HalDisplay() : einkDisplay(EPD_SCLK, EPD_MOSI, EPD_CS, EPD_DC, EPD_RST, EPD_BUSY) {}

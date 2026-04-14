@@ -74,6 +74,9 @@ class FontDecompressor {
   uint16_t getGroupIndex(const EpdFontData* fontData, uint32_t glyphIndex);
   uint32_t getAlignedOffset(const EpdFontData* fontData, uint16_t groupIndex, uint32_t glyphIndex);
   bool decompressGroup(const EpdFontData* fontData, uint16_t groupIndex, uint8_t* outBuf, uint32_t outSize);
-  static void compactSingleGlyph(const uint8_t* alignedSrc, uint8_t* packedDst, uint8_t width, uint8_t height);
+  static uint32_t getAlignedStride(bool is2Bit, uint8_t width);
+  static uint32_t getAlignedGlyphSize(bool is2Bit, uint8_t width, uint8_t height);
+  static void compactSingleGlyph(const uint8_t* alignedSrc, uint8_t* packedDst, uint8_t width, uint8_t height,
+                                 bool is2Bit);
   static int32_t findGlyphIndex(const EpdFontData* fontData, uint32_t codepoint);
 };

@@ -48,12 +48,12 @@ for size in ${UI_FONT_SIZES[@]}; do
     font_name="ubuntu_${size}_$(echo $style | tr '[:upper:]' '[:lower:]')"
     font_path="../builtinFonts/source/Ubuntu/Ubuntu-${style}.ttf"
     output_path="../builtinFonts/${font_name}.h"
-    python fontconvert.py $font_name $size $font_path > $output_path
+    python fontconvert.py $font_name $size $font_path --compress > $output_path
     echo "Generated $output_path"
   done
 done
 
-python fontconvert.py notosans_8_regular 8 ../builtinFonts/source/NotoSans/NotoSans-Regular.ttf > ../builtinFonts/notosans_8_regular.h
+python fontconvert.py notosans_8_regular 8 ../builtinFonts/source/NotoSans/NotoSans-Regular.ttf --compress > ../builtinFonts/notosans_8_regular.h
 
 echo ""
 echo "Running compression verification..."

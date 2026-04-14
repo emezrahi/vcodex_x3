@@ -16,7 +16,7 @@ struct DirectPixelWriter {
   uint8_t* fb;
   GfxRenderer::RenderMode mode;
   bool darkMode;
-  uint16_t displayWidthBytes;
+  uint16_t displayWidthBytes;  // Runtime framebuffer stride (X4: 100, X3: 99)
 
   // Orientation is collapsed into a linear transform:
   //   phyX = phyXBase + x * phyXStepX + y * phyXStepY
@@ -32,14 +32,14 @@ struct DirectPixelWriter {
     fb = renderer.getFrameBuffer();
     mode = renderer.getRenderMode();
     darkMode = renderer.isDarkMode();
-    displayWidthBytes = display.getDisplayWidthBytes();
+    displayWidthBytes = renderer.getDisplayWidthBytes();
 
-    const int phyW = display.getDisplayWidth();
-    const int phyH = display.getDisplayHeight();
+    const int phyW = renderer.getDisplayWidth();
+    const int phyH = renderer.getDisplayHeight();
 
     switch (renderer.getOrientation()) {
       case GfxRenderer::Portrait:
-        // phyX = y, phyY = (DISPLAY_HEIGHT-1) - x
+        // phyX = y, phyY = (phyH-1) - x
         phyXBase = 0;
         phyYBase = phyH - 1;
         phyXStepX = 0;
@@ -48,7 +48,7 @@ struct DirectPixelWriter {
         phyYStepY = 0;
         break;
       case GfxRenderer::LandscapeClockwise:
-        // phyX = (DISPLAY_WIDTH-1) - x, phyY = (DISPLAY_HEIGHT-1) - y
+        // phyX = (phyW-1) - x, phyY = (phyH-1) - y
         phyXBase = phyW - 1;
         phyYBase = phyH - 1;
         phyXStepX = -1;
@@ -57,7 +57,7 @@ struct DirectPixelWriter {
         phyYStepY = -1;
         break;
       case GfxRenderer::PortraitInverted:
-        // phyX = (DISPLAY_WIDTH-1) - y, phyY = x
+        // phyX = (phyW-1) - y, phyY = x
         phyXBase = phyW - 1;
         phyYBase = 0;
         phyXStepX = 0;

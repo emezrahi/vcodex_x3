@@ -201,6 +201,7 @@ void GfxRenderer::drawPixelRaw(const int x, const int y, const bool state) const
   rotateCoordinates(orientation, x, y, &phyX, &phyY, panelWidth, panelHeight);
 
   // Bounds checking against physical panel dimensions
+  // Bounds checking against runtime panel dimensions
   if (phyX < 0 || phyX >= panelWidth || phyY < 0 || phyY >= panelHeight) {
     LOG_ERR("GFX", "!! Outside range (%d, %d) -> (%d, %d)", x, y, phyX, phyY);
     return;
@@ -638,12 +639,24 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
   LOG_DBG("GFX", "Cropping %dx%d by %dx%d pix, is %s", bitmap.getWidth(), bitmap.getHeight(), cropPixX, cropPixY,
           bitmap.isTopDown() ? "top-down" : "bottom-up");
 
-  if (maxWidth > 0 && (1.0f - cropX) * bitmap.getWidth() > maxWidth) {
-    scale = static_cast<float>(maxWidth) / static_cast<float>((1.0f - cropX) * bitmap.getWidth());
-    isScaled = true;
+  const float croppedWidth = (1.0f - cropX) * static_cast<float>(bitmap.getWidth());
+  const float croppedHeight = (1.0f - cropY) * static_cast<float>(bitmap.getHeight());
+  bool hasTargetBounds = false;
+  float fitScale = 1.0f;
+
+  if (maxWidth > 0 && croppedWidth > 0.0f) {
+    fitScale = static_cast<float>(maxWidth) / croppedWidth;
+    hasTargetBounds = true;
   }
-  if (maxHeight > 0 && (1.0f - cropY) * bitmap.getHeight() > maxHeight) {
-    scale = std::min(scale, static_cast<float>(maxHeight) / static_cast<float>((1.0f - cropY) * bitmap.getHeight()));
+
+  if (maxHeight > 0 && croppedHeight > 0.0f) {
+    const float heightScale = static_cast<float>(maxHeight) / croppedHeight;
+    fitScale = hasTargetBounds ? std::min(fitScale, heightScale) : heightScale;
+    hasTargetBounds = true;
+  }
+
+  if (hasTargetBounds && fitScale < 1.0f) {
+    scale = fitScale;
     isScaled = true;
   }
   LOG_DBG("GFX", "Scaling by %f - %s", scale, isScaled ? "scaled" : "not scaled");
@@ -976,9 +989,11 @@ int GfxRenderer::getScreenWidth() const {
   switch (orientation) {
     case Portrait:
     case PortraitInverted:
+      // 480px wide in portrait logical coordinates
       return panelHeight;
     case LandscapeClockwise:
     case LandscapeCounterClockwise:
+      // 800px wide in landscape logical coordinates
       return panelWidth;
   }
   return panelHeight;
@@ -988,9 +1003,11 @@ int GfxRenderer::getScreenHeight() const {
   switch (orientation) {
     case Portrait:
     case PortraitInverted:
+      // 800px tall in portrait logical coordinates
       return panelWidth;
     case LandscapeClockwise:
     case LandscapeCounterClockwise:
+      // 480px tall in landscape logical coordinates
       return panelHeight;
   }
   return panelWidth;
@@ -1046,15 +1063,20 @@ int GfxRenderer::getTextAdvanceX(const int fontId, const char* text, EpdFontFami
       continue;
     }
     cp = font.applyLigatures(cp, text, style);
+
+    // Differential rounding: snap (previous advance + current kern) together,
+    // matching drawText so measurement and rendering agree exactly.
     if (prevCp != 0) {
       const auto kernFP = font.getKerning(prevCp, cp, style);
       widthPx += fp4::toPixel(prevAdvanceFP + kernFP);
     }
+
     const EpdGlyph* glyph = font.getGlyph(cp, style);
     prevAdvanceFP = glyph ? glyph->advanceX : 0;
     prevCp = cp;
   }
   widthPx += fp4::toPixel(prevAdvanceFP);
+  widthPx += fp4::toPixel(prevAdvanceFP);  // final glyph's advance
   return widthPx;
 }
 
@@ -1128,6 +1150,9 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x, const int y
     }
 
     cp = font.applyLigatures(cp, text, style);
+
+    // Differential rounding: snap (previous advance + current kern) as one unit,
+    // subtracting for the rotated coordinate direction.
     if (prevCp != 0) {
       const auto kernFP = font.getKerning(prevCp, cp, style);
       lastBaseY -= fp4::toPixel(prevAdvanceFP + kernFP);
@@ -1197,6 +1222,7 @@ bool GfxRenderer::storeBwBuffer() {
     memcpy(bwBufferChunks[i], frameBuffer + offset, chunkSize);
   }
 
+  LOG_DBG("GFX", "Stored BW buffer in %zu chunks (%zu bytes max each)", bwBufferChunks.size(), BW_BUFFER_CHUNK_SIZE);
   LOG_DBG("GFX", "Stored BW buffer in %zu chunks (%zu bytes max each)", bwBufferChunks.size(), BW_BUFFER_CHUNK_SIZE);
   return true;
 }

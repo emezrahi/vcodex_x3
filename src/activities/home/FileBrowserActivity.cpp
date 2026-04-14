@@ -21,43 +21,31 @@ constexpr unsigned long GO_HOME_MS = 1000;
 
 void sortFileList(std::vector<std::string>& strs) {
   std::sort(begin(strs), end(strs), [](const std::string& str1, const std::string& str2) {
-    // Directories first
     bool isDir1 = str1.back() == '/';
     bool isDir2 = str2.back() == '/';
     if (isDir1 != isDir2) return isDir1;
 
-    // Start naive natural sort
     const char* s1 = str1.c_str();
     const char* s2 = str2.c_str();
 
-    // Iterate while both strings have characters
     while (*s1 && *s2) {
-      // Check if both are at the start of a number
       if (isdigit(*s1) && isdigit(*s2)) {
-        // Skip leading zeros and track them
-        const char* start1 = s1;
-        const char* start2 = s2;
         while (*s1 == '0') s1++;
         while (*s2 == '0') s2++;
 
-        // Count digits to compare lengths first
         int len1 = 0, len2 = 0;
         while (isdigit(s1[len1])) len1++;
         while (isdigit(s2[len2])) len2++;
 
-        // Different length so return smaller integer value
         if (len1 != len2) return len1 < len2;
 
-        // Same length so compare digit by digit
         for (int i = 0; i < len1; i++) {
           if (s1[i] != s2[i]) return s1[i] < s2[i];
         }
 
-        // Numbers equal so advance pointers
         s1 += len1;
         s2 += len2;
       } else {
-        // Regular case-insensitive character comparison
         char c1 = tolower(*s1);
         char c2 = tolower(*s2);
         if (c1 != c2) return c1 < c2;
@@ -66,7 +54,6 @@ void sortFileList(std::vector<std::string>& strs) {
       }
     }
 
-    // One string is prefix of other
     return *s1 == '\0' && *s2 != '\0';
   });
 }
@@ -158,7 +145,6 @@ void FileBrowserActivity::onExit() {
 }
 
 void FileBrowserActivity::clearFileMetadata(const std::string& fullPath) {
-  // Only clear cache for .epub files
   if (FsHelpers::hasEpubExtension(fullPath)) {
     Epub(fullPath, "/.crosspoint").clearCache();
     LOG_DBG("FileBrowser", "Cleared metadata cache for: %s", fullPath.c_str());
@@ -166,9 +152,6 @@ void FileBrowserActivity::clearFileMetadata(const std::string& fullPath) {
 }
 
 void FileBrowserActivity::loop() {
-  // Long press BACK (1s+) goes to root folder
-  // but Long press BACK (1s+) from ReaderActivity sends us here with the MappedInput already set.
-  // So ignore it the first time.
   if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= GO_HOME_MS &&
       basepath != "/" && !lockLongPressBack) {
     basepath = "/";
@@ -183,16 +166,16 @@ void FileBrowserActivity::loop() {
     return;
   }
 
-  const int pageItems = UITheme::getInstance().getNumberOfItemsPerPage(renderer, true, false, true, false);
+  const int pathReserved = renderer.getLineHeight(SMALL_FONT_ID) + UITheme::getInstance().getMetrics().verticalSpacing;
+  const int pageItems = UITheme::getNumberOfItemsPerPage(renderer, true, false, true, false, pathReserved);
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     if (files.empty()) return;
 
     const std::string& entry = files[selectorIndex];
-    bool isDirectory = (entry.back() == '/');
+    const bool isDirectory = (entry.back() == '/');
 
     if (mappedInput.getHeldTime() >= GO_HOME_MS && !isDirectory) {
-      // --- LONG PRESS ACTION: DELETE FILE ---
       std::string cleanBasePath = basepath;
       if (cleanBasePath.back() != '/') cleanBasePath += "/";
       const std::string fullPath = cleanBasePath + entry;
@@ -207,7 +190,6 @@ void FileBrowserActivity::loop() {
             if (files.empty()) {
               selectorIndex = 0;
             } else if (selectorIndex >= files.size()) {
-              // Move selection to the new "last" item
               selectorIndex = files.size() - 1;
             }
 
@@ -221,27 +203,24 @@ void FileBrowserActivity::loop() {
       };
 
       std::string heading = tr(STR_DELETE) + std::string("? ");
-
       startActivityForResult(std::make_unique<ConfirmationActivity>(renderer, mappedInput, heading, entry), handler);
       return;
-    } else {
-      // --- SHORT PRESS ACTION: OPEN/NAVIGATE ---
-      if (basepath.back() != '/') basepath += "/";
+    }
 
-      if (isDirectory) {
-        basepath += entry.substr(0, entry.length() - 1);
-        loadFiles();
-        selectorIndex = 0;
-        requestUpdate();
-      } else {
-        onSelectBook(basepath + entry);
-      }
+    if (basepath.back() != '/') basepath += "/";
+
+    if (isDirectory) {
+      basepath += entry.substr(0, entry.length() - 1);
+      loadFiles();
+      selectorIndex = 0;
+      requestUpdate();
+    } else {
+      onSelectBook(basepath + entry);
     }
     return;
   }
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-    // Short press: go up one directory, or go home if at root
     if (mappedInput.getHeldTime() < GO_HOME_MS) {
       if (basepath != "/") {
         const std::string oldPath = basepath;
@@ -261,7 +240,7 @@ void FileBrowserActivity::loop() {
     }
   }
 
-  int listSize = static_cast<int>(files.size());
+  const int listSize = static_cast<int>(files.size());
   buttonNavigator.onNextRelease([this, listSize] {
     selectorIndex = ButtonNavigator::nextIndex(static_cast<int>(selectorIndex), listSize);
     requestUpdate();
@@ -309,8 +288,12 @@ void FileBrowserActivity::render(RenderLock&&) {
   std::string folderName = (basepath == "/") ? tr(STR_SD_CARD) : basepath.substr(basepath.rfind('/') + 1);
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, folderName.c_str());
 
+  const int pathLineHeight = renderer.getLineHeight(SMALL_FONT_ID);
+  const int pathReserved = pathLineHeight + metrics.verticalSpacing;
   const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
-  const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing;
+  const int contentHeight =
+      pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing - pathReserved;
+
   if (files.empty()) {
     renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, contentTop + 20, tr(STR_NO_FILES_FOUND));
   } else {
@@ -323,7 +306,30 @@ void FileBrowserActivity::render(RenderLock&&) {
                                    completedFileStates[index] != 0; });
   }
 
-  // Help text
+  {
+    const int pathY = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - pathLineHeight;
+    const int separatorY = pathY - metrics.verticalSpacing / 2;
+    renderer.drawLine(0, separatorY, pageWidth - 1, separatorY, 3, true);
+    const int pathMaxWidth = pageWidth - metrics.contentSidePadding * 2;
+    const char* pathStr = basepath.c_str();
+    const char* pathDisplay = pathStr;
+    char leftTruncBuf[256];
+    if (renderer.getTextWidth(SMALL_FONT_ID, pathStr) > pathMaxWidth) {
+      const char ellipsis[] = "\xe2\x80\xa6";
+      const int ellipsisWidth = renderer.getTextWidth(SMALL_FONT_ID, ellipsis);
+      const int available = pathMaxWidth - ellipsisWidth;
+      const char* p = pathStr;
+      while (*p) {
+        if (renderer.getTextWidth(SMALL_FONT_ID, p) <= available) break;
+        ++p;
+        while (*p && (static_cast<unsigned char>(*p) & 0xC0) == 0x80) ++p;
+      }
+      snprintf(leftTruncBuf, sizeof(leftTruncBuf), "%s%s", ellipsis, p);
+      pathDisplay = leftTruncBuf;
+    }
+    renderer.drawText(SMALL_FONT_ID, metrics.contentSidePadding, pathY, pathDisplay);
+  }
+
   const auto labels =
       mappedInput.mapLabels(basepath == "/" ? tr(STR_HOME) : tr(STR_BACK), files.empty() ? "" : tr(STR_OPEN),
                             files.empty() ? "" : tr(STR_DIR_UP), files.empty() ? "" : tr(STR_DIR_DOWN));

@@ -690,37 +690,35 @@ print(f"ligatures: {len(ligature_pairs)} pairs extracted", file=sys.stderr)
 compress = args.compress
 
 
-def to_byte_aligned(packed, width, height):
-    """Convert packed 2-bit bitmap to byte-aligned format (rows padded to byte boundary).
+def to_byte_aligned(packed, width, height, is2Bit):
+    """Convert packed bitmap to byte-aligned format (rows padded to byte boundary).
 
-    In packed format, pixels flow continuously across row boundaries (4 pixels/byte).
-    In byte-aligned format, each row starts at a byte boundary, padding the last byte
-    of each row with zero bits if width % 4 != 0. This improves DEFLATE compression
-    because identical pixel rows produce identical byte patterns regardless of position.
+    Packed format stores pixels continuously across row boundaries.
+    Byte-aligned format restarts each row on a byte boundary, improving DEFLATE
+    compression because identical pixel rows produce identical byte sequences.
     """
     if width == 0 or height == 0:
         return b''
-    row_stride = (width + 3) // 4  # bytes per byte-aligned row
+    pixels_per_byte = 4 if is2Bit else 8
+    pixel_mask = 0x3 if is2Bit else 0x1
+    row_stride = (width + pixels_per_byte - 1) // pixels_per_byte
     aligned = bytearray(row_stride * height)
     for y in range(height):
         for x in range(width):
             # Read pixel from packed format (continuous bit stream)
             packed_pos = y * width + x
-            packed_byte_idx = packed_pos // 4
-            packed_shift = (3 - (packed_pos % 4)) * 2
-            pixel = (packed[packed_byte_idx] >> packed_shift) & 0x3
+            packed_byte_idx = packed_pos // pixels_per_byte
+            packed_shift = (3 - (packed_pos % 4)) * 2 if is2Bit else 7 - (packed_pos % 8)
+            pixel = (packed[packed_byte_idx] >> packed_shift) & pixel_mask
 
             # Write pixel to byte-aligned format (row-aligned)
-            aligned_byte_idx = y * row_stride + x // 4
-            aligned_shift = (3 - (x % 4)) * 2
+            aligned_byte_idx = y * row_stride + x // pixels_per_byte
+            aligned_shift = (3 - (x % 4)) * 2 if is2Bit else 7 - (x % 8)
             aligned[aligned_byte_idx] |= (pixel << aligned_shift)
     return bytes(aligned)
 
 
 # Build groups for compression
-if compress and not is2Bit:
-    print("Error: --compress requires --2bit (byte-aligned compression only supports 2-bit format)", file=sys.stderr)
-    sys.exit(1)
 if compress:
     # Script-based grouping: glyphs that co-occur in typical text rendering
     # are grouped together for efficient LRU caching on the embedded target.
@@ -796,7 +794,7 @@ if compress:
                 code_point=old_props.code_point,
             )
             packed_len += len(packed)
-            group_aligned.extend(to_byte_aligned(packed, old_props.width, old_props.height))
+            group_aligned.extend(to_byte_aligned(packed, old_props.width, old_props.height, is2Bit))
 
         # Compress byte-aligned data with raw DEFLATE (no zlib/gzip header)
         compressor = zlib.compressobj(level=9, wbits=-15)

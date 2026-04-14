@@ -132,10 +132,14 @@ void TxtReaderActivity::loop() {
     READING_STATS.noteActivity();
     currentPage--;
     requestUpdate();
-  } else if (nextTriggered && currentPage < totalPages - 1) {
-    READING_STATS.noteActivity();
-    currentPage++;
-    requestUpdate();
+  } else if (nextTriggered) {
+    if (currentPage < totalPages - 1) {
+      READING_STATS.noteActivity();
+      currentPage++;
+      requestUpdate();
+    } else {
+      exitReaderToHomeOrStats(renderer, mappedInput, txt ? txt->getPath() : "");
+    }
   }
 }
 
