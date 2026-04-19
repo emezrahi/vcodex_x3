@@ -134,6 +134,7 @@ void TxtReaderActivity::loop() {
       currentPage++;
       requestUpdate();
     } else {
+      READING_STATS.updateProgress(100, true, "", 100);
       exitReaderToHomeOrStats(renderer, mappedInput, txt ? txt->getPath() : "");
     }
   }

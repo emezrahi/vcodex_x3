@@ -80,6 +80,22 @@ uint8_t getStatsChapterProgressPercent(const int currentPage, const int pageCoun
       clampPercent(static_cast<int>((static_cast<float>(currentPage + 1) / static_cast<float>(pageCount)) * 100.0f + 0.5f)));
 }
 
+void markStatsCompletedAtEnd(Epub& epub, int spineIndex) {
+  const int spineCount = epub.getSpineItemsCount();
+  if (spineCount <= 0) {
+    READING_STATS.updateProgress(100, true, "", 100);
+    return;
+  }
+
+  if (spineIndex >= spineCount) {
+    spineIndex = spineCount - 1;
+  } else if (spineIndex < 0) {
+    spineIndex = 0;
+  }
+
+  READING_STATS.updateProgress(100, true, getStatsChapterTitle(epub, spineIndex), 100);
+}
+
 std::string getStableProgressPath(const std::string& bookId) {
   return BookIdentity::getStableDataFilePath(bookId, "epub_progress.bin");
 }
@@ -729,6 +745,7 @@ void EpubReaderActivity::render(RenderLock&& lock) {
 
   // Show end of book screen
   if (currentSpineIndex == epub->getSpineItemsCount()) {
+    markStatsCompletedAtEnd(*epub, currentSpineIndex);
     renderer.clearScreen();
     renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_END_OF_BOOK), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();

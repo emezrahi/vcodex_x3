@@ -73,6 +73,16 @@ uint8_t getChapterProgressForStats(Xtc& xtc, const uint32_t currentPage) {
   return static_cast<uint8_t>(std::min<uint32_t>(100, (pageOffset * 100 + chapterLength / 2) / chapterLength));
 }
 
+void markStatsCompletedAtEnd(Xtc& xtc) {
+  if (xtc.getPageCount() == 0) {
+    READING_STATS.updateProgress(100, true, "", 100);
+    return;
+  }
+
+  const uint32_t lastPage = xtc.getPageCount() - 1;
+  READING_STATS.updateProgress(100, true, getChapterTitleForStats(xtc, lastPage), 100);
+}
+
 void exitReaderToHomeOrStats(GfxRenderer& renderer, MappedInputManager& mappedInput, const std::string& bookPath) {
   READING_STATS.endSession();
   ACHIEVEMENTS.recordSessionEnded(READING_STATS.getLastSessionSnapshot());
@@ -237,6 +247,7 @@ void XtcReaderActivity::render(RenderLock&&) {
   // Bounds check
   if (currentPage >= xtc->getPageCount()) {
     // Show end of book screen
+    markStatsCompletedAtEnd(*xtc);
     renderer.clearScreen();
     renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_END_OF_BOOK), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();
