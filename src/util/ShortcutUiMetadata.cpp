@@ -46,10 +46,6 @@ std::string getRecentBooksShortcutSubtitle() { return std::to_string(RECENT_BOOK
 
 std::string getFavoritesShortcutSubtitle() { return std::to_string(FAVORITES.getCount()); }
 
-  }
-
-  return std::to_string(recentCount) + " | " + std::to_string(statsCount);
-}
 
 std::string getSleepShortcutSubtitle() {
   const std::string selectedDirectory = SleepImageUtils::resolveConfiguredSleepDirectory();
