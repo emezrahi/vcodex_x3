@@ -125,9 +125,6 @@ uint8_t migrateStoredUiTheme(const uint8_t rawUiTheme, const uint8_t schemaVersi
 }
 
 
-  if (migratedMode != rawMode && needsResave) *needsResave = true;
-  return migratedMode;
-}
 }  // namespace
 
 // Convert legacy settings.
