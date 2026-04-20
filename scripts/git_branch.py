@@ -88,22 +88,24 @@ def next_dev_counter(project_dir, release_number):
 
 def inject_version(env):
     env_name = env["PIOENV"]
-    if env_name not in ("default", "gh_release"):
+    if env_name not in ("default", "gh_release", "default_x3", "gh_release_x3"):
         return
 
     project_dir = env["PROJECT_DIR"]
     base_version = get_base_version(project_dir)
+    is_x3 = env_name.endswith("_x3")
+    suffix = "-x3" if is_x3 else ""
 
-    if env_name == "default":
+    if env_name in ("default", "default_x3"):
         release_number, release_counter_path = get_current_release_number(project_dir)
         build_counter, counter_path = next_dev_counter(project_dir, release_number)
-        version_string = f"{base_version}.{release_number}.dev{build_counter}"
+        version_string = f"{base_version}.{release_number}.dev{build_counter}{suffix}"
         build_kind = "dev"
         print(f"CPR-vCodex release line: {release_number} ({release_counter_path})")
     else:
         release_number, counter_path = next_release_number(project_dir)
         build_counter = release_number
-        version_string = f"{base_version}.{release_number}"
+        version_string = f"{base_version}.{release_number}{suffix}"
         build_kind = "release"
 
     env.Append(

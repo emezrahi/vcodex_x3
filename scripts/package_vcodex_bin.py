@@ -93,7 +93,7 @@ def package_vcodex_bin(source, target, env):
     metadata_path = output_dir / f"{safe_version}-cpr-vcodex.json"
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
-    if env.subst("$PIOENV") == "gh_release":
+    if env.subst("$PIOENV") in ("gh_release", "gh_release_x3"):
         update_readme_release_version(project_dir, artifact_name)
 
     print(f"Packaged vcodex artifact: {artifact_path}")

@@ -17,7 +17,7 @@
 | Item | Value |
 |---|---|
 | Project | `CPR-vCodex` |
-| Device | `Xteink X4` |
+| Device | `Xteink X4 and X3` |
 | Current release (CPR-vCodex) build | [`1.2.0.26-cpr-vcodex`](https://github.com/franssjz/cpr-vcodex/releases/tag/1.2.0.26-cpr-vcodex) |
 | Latest Open Dyslexic font build | [`1.2.0.25-cpr-vcodex`](https://github.com/franssjz/cpr-vcodex/releases/tag/1.2.0.25-cpr-vcodex) |
 | Changelog | [CHANGELOG.md](./CHANGELOG.md) |
@@ -52,11 +52,11 @@ front,back
 Sample deck ready to copy to the SD card:
 - [flashcards_sample.csv](./flashcards_sample.csv)
 
-`CPR-vCodex` is a reading-focused firmware fork for the **Xteink X4**, built on top of the stable **CrossPoint Reader** baseline and extended with analytics, reader utilities, branding cleanup, extra UI features, and carefully selected upstream carry-forwards.
+`CPR-vCodex` is a reading-focused firmware fork for the **Xteink X4 and X3**, built on top of the stable **CrossPoint Reader** baseline and extended with analytics, reader utilities, branding cleanup, extra UI features, and carefully selected upstream carry-forwards.
 
-The official `crosspoint-reader` project is treated as the stable reference. `vcodex` only carries forward upstream work when it is useful on the X4 and safe enough to keep the reader fast and reliable.
+The official `crosspoint-reader` project is treated as the stable reference. `vcodex` only carries forward upstream work when it is useful and safe enough to keep the reader fast and reliable.
 
-There may be some **involuntary or incidental X3 compatibility** because parts of the upstream codebase still carry X3-aware paths. However, `CPR-vCodex` is developed and validated on **X4**, and I do **not** currently have an **X3** device available to test or confirm that compatibility.
+**X3 support:** The firmware auto-detects the device at runtime via I2C probe. X3 grayscale rendering uses dedicated LUTs (from upstream [#1607](https://github.com/crosspoint-reader/crosspoint-reader/pull/1607)) providing proper 4-level gray and improved antialiasing. Build with `env:gh_release_x3` to get an X3-labelled release artifact.
 
 This project is **not affiliated with Xteink**.
 
@@ -425,13 +425,9 @@ The incremental `.bNNNN` suffix exists specifically to help distinguish newer fl
 - `PlatformIO Core` (`pio`) or `VS Code + PlatformIO IDE`
 - Python 3.8+
 - USB-C cable for flashing the ESP32-C3
-- Xteink X4
+- Xteink X4 or X3
 
-Possible note about X3:
-
-- the codebase may still retain some upstream X3-aware behavior
-- `CPR-vCodex` is not validated on X3 hardware
-- no X3 device is currently available for testing
+**Building for X3:** Use `env:default_x3` for development or `env:gh_release_x3` for a release artifact. The firmware auto-detects the device at boot, so the same binary works on both X3 and X4. The X3 env just produces a version string and artifact name with `-x3` appended for clarity.
 
 ### Build
 
