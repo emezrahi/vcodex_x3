@@ -1,0 +1,39 @@
+name: Compile X3 Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-release-x3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          enable-cache: false
+
+      - name: Install PlatformIO Core
+        run: uv pip install --system -U https://github.com/pioarduino/platformio-core/archive/refs/tags/v6.1.19.zip
+
+      - name: Build X3 Release
+        run: pio run -e gh_release_x3
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpr-vcodex-x3
+          path: |
+            .pio/build/gh_release_x3/bootloader.bin
+            .pio/build/gh_release_x3/firmware.bin
+            .pio/build/gh_release_x3/firmware.elf
+            .pio/build/gh_release_x3/partitions.bin
+            artifacts/*.bin
