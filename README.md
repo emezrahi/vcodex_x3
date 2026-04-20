@@ -1,7 +1,7 @@
-# CPR-vCodex
+# VCodex X3
 
 <p align="center">
-  <img src="./docs/images/logotext_by_Which-Estimate4566.svg" alt="CPR-vCodex logo" width="720" />
+  <img src="./docs/images/logotext_by_Which-Estimate4566.svg" alt="VCodex X3 logo" width="720" />
   <br />
   <sub>Logo contributed by Which-Estimate4566.</sub>
 </p>
@@ -9,25 +9,23 @@
 ## Screenshots
 
 <p align="center">
-  <img src="./docs/images/screenshots.png" alt="CPR-vCodex overview" width="1000" />
+  <img src="./docs/images/screenshots.png" alt="VCodex X3 overview" width="1000" />
 </p>
 
 ## At a glance
 
 | Item | Value |
 |---|---|
-| Project | `CPR-vCodex` |
+| Project | `VCodex X3` |
 | Device | `Xteink X4 and X3` |
-| Current release (CPR-vCodex) build | [`1.2.0.26-cpr-vcodex`](https://github.com/franssjz/cpr-vcodex/releases/tag/1.2.0.26-cpr-vcodex) |
-| Latest Open Dyslexic font build | [`1.2.0.25-cpr-vcodex`](https://github.com/franssjz/cpr-vcodex/releases/tag/1.2.0.25-cpr-vcodex) |
+| Current release (VCodex X3) build | [`1.2.0.26-VCodex_X3`](https://github.com/emezrahi/VCodex_X3/releases/tag/1.2.0.26-VCodex_X3) |
+| Latest Open Dyslexic font build | [`1.2.0.25-VCodex_X3`](https://github.com/emezrahi/VCodex_X3/releases/tag/1.2.0.25-VCodex_X3) |
 | Changelog | [CHANGELOG.md](./CHANGELOG.md) |
 | Base firmware line | `CrossPoint Reader 1.2.0` |
 | Latest official commit reviewed | [`64f5ef0`](https://github.com/crosspoint-reader/crosspoint-reader/commit/64f5ef09fd4c46e3d2e382c47c3bfd581da92f2d) |
 | Latest official commit incorporated | [`64f5ef0`](https://github.com/crosspoint-reader/crosspoint-reader/commit/64f5ef09fd4c46e3d2e382c47c3bfd581da92f2d) |
 
-## Flashcards study modes
 
-`Flashcards` currently offers three review modes:
 
 - `Due`: builds a finite session from cards that are due first, then fills with unseen cards if needed. `Session size` is respected here, and `All` means "all due cards plus unseen cards".
 - `Scheduled`: builds a finite shuffled session from the whole deck. `Session size` is respected here, and `All` means the whole deck.
@@ -50,9 +48,8 @@ front,back
 ```
 
 Sample deck ready to copy to the SD card:
-- [flashcards_sample.csv](./flashcards_sample.csv)
 
-`CPR-vCodex` is a reading-focused firmware fork for the **Xteink X4 and X3**, built on top of the stable **CrossPoint Reader** baseline and extended with analytics, reader utilities, branding cleanup, extra UI features, and carefully selected upstream carry-forwards.
+`VCodex X3` is a reading-focused firmware fork for the **Xteink X4 and X3**, built on top of the stable **CrossPoint Reader** baseline and extended with analytics, reader utilities, branding cleanup, extra UI features, and carefully selected upstream carry-forwards.
 
 The official `crosspoint-reader` project is treated as the stable reference. `vcodex` only carries forward upstream work when it is useful and safe enough to keep the reader fast and reliable.
 
@@ -68,7 +65,6 @@ This project is **not affiliated with Xteink**.
 - `Sync Day` for coherent day-based stats on hardware without a trustworthy sleep RTC
 - EPUB bookmarks plus a global bookmarks app
 - configurable `Home` and `Apps` shortcuts
-- `Flashcards` with offline CSV decks, session summary, recents, stats and settings
 - `Text Darkness`, `Reader Refresh Mode`, `Lexend`, `X Small`
 - `Sleep` tools with directory selection, preview, cache, sequential and shuffle behavior
 - `Dark Mode (Experimental)`
@@ -76,7 +72,7 @@ This project is **not affiliated with Xteink**.
 
 ## Languages
 
-`CPR-vCodex` currently ships with **23 UI languages**:
+`VCodex X3` currently ships with **23 UI languages**:
 
 - English
 - Spanish
@@ -108,7 +104,7 @@ The translation set is maintained from `english.yaml` as the source of truth, wi
 
 For most users, this is the easiest way to install the firmware:
 
-1. Download the latest `*-cpr-vcodex.bin` release file.
+1. Download the latest `*-VCodex_X3.bin` release file.
 2. Turn on and unlock your Xteink X4.
 3. Open [xteink.dve.al](https://xteink.dve.al/).
 4. In `OTA fast flash controls`, select the firmware file.
@@ -121,7 +117,7 @@ To return to the original CrossPoint Reader later, repeat the same process with 
 
 ## 5-minute start
 
-If you just flashed `CPR-vCodex` and want the main value quickly:
+If you just flashed `VCodex X3` and want the main value quickly:
 
 1. Open `Home > Sync Day`
 2. Connect to Wi-Fi and sync the date
@@ -140,7 +136,6 @@ That is enough to start using the core `vcodex` additions: coherent day-based an
 | `Reading Day` | one-day drill-down from the heatmap | [Reading analytics suite](#reading-analytics-suite) |
 | `Reading Profile` | weekly reading behavior summary | [Reading analytics suite](#reading-analytics-suite) |
 | `Achievements` | console-style milestones and optional popups | [Achievements](#achievements) |
-| `Flashcards` | offline deck study with `Scheduled` and `Infinite` session modes | [Flashcards](#flashcards) |
 | `Sync Day` | manual Wi-Fi date sync and fallback-day logic | [Sync Day and date model](#sync-day-and-date-model) |
 | `Home + Apps shortcuts` | configurable placement, visibility, and ordering | [Home and Apps](#home-and-apps) |
 | `Bookmarks` | EPUB bookmarks plus a global bookmarks app | [Bookmarks](#bookmarks) |
@@ -264,7 +259,6 @@ It includes compact help pages for:
 - `Sync Day`
 - `Reading Stats`
 - `Bookmarks`
-- `Flashcards`
 - `Sleep`
 - `Customize Home and Apps`
 - `Achievements`
@@ -297,35 +291,6 @@ Supported flow:
 - reopen a book directly at a saved bookmark from the global bookmarks app
 - delete individual bookmarks or all bookmarks for one book
 
-## Flashcards
-
-`Flashcards` is an offline study app built around CSV decks on the SD card.
-
-Main sections:
-
-- `Open`
-- `Recents`
-- `Statistics`
-- `Settings`
-
-Deck flow:
-
-- open a CSV deck from the SD card
-- study in landscape using `Flip`, `Next`, `Success` and `Fail`
-- leave the deck through the page buttons when you want to finish
-- get a session summary when you exit
-
-Study modes:
-
-- `Due`: finite review-oriented session, using due cards first and unseen cards second
-- `Scheduled`: finite shuffled session from the whole deck
-- `Infinite`: endless practice, ignores `Session size`
-
-Statistics:
-
-- each deck keeps its own seen / unseen / due / mastered metrics
-- `Statistics` lists known decks
-- holding `Select` on a deck inside `Statistics` lets you reset that deck's flashcard stats after confirmation
 
 ## Sleep
 
@@ -384,7 +349,7 @@ Recommended rule:
 
 ## Data persistence
 
-`CPR-vCodex` keeps storage compatibility as a first priority.
+`VCodex X3` keeps storage compatibility as a first priority.
 
 It does **not** use a database. User state is persisted mainly under `/.crosspoint/`.
 
@@ -406,8 +371,8 @@ Each packaged dev build now keeps the base firmware line and the local flash ide
 Practical values to look at:
 
 - base firmware line: `CrossPoint Reader 1.2.0`
-- current dev build style: `1.2.0.2.dev1-cpr-vcodex`
-- packaged artifact style: `artifacts/<version>-cpr-vcodex.bin`
+- current dev build style: `1.2.0.2.dev1-VCodex_X3`
+- packaged artifact style: `artifacts/<version>-VCodex_X3.bin`
 
 The incremental `.bNNNN` suffix exists specifically to help distinguish newer flashes from older ones on real hardware.
 
@@ -440,13 +405,13 @@ Use the project build wrapper:
 This generates a packaged firmware artifact under:
 
 ```text
-artifacts/<version>-cpr-vcodex.bin
+artifacts/<version>-VCodex_X3.bin
 ```
 
 Versioning rules:
 
-- release builds: `1.2.0.<release>-cpr-vcodex.bin`
-- dev builds: `1.2.0.<release>.dev<build>-cpr-vcodex.bin`
+- release builds: `1.2.0.<release>-VCodex_X3.bin`
+- dev builds: `1.2.0.<release>.dev<build>-VCodex_X3.bin`
 
 ## Credits
 
@@ -458,4 +423,4 @@ Huge credit goes to:
 
 ---
 
-CPR-vCodex is **not affiliated with Xteink or any manufacturer of the X4 hardware**.
+VCodex X3 is **not affiliated with Xteink or any manufacturer of the X4 hardware**.

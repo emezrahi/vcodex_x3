@@ -8,7 +8,6 @@
 #include "AchievementsActivity.h"
 #include "BookmarksAppActivity.h"
 #include "FavoritesAppActivity.h"
-#include "FlashcardsAppActivity.h"
 #include "IfFoundActivity.h"
 #include "ReadMeActivity.h"
 #include "ReadingHeatmapActivity.h"
@@ -178,9 +177,6 @@ void AppsActivity::openSelectedApp() {
       break;
     case ShortcutId::Favorites:
       activity = std::make_unique<FavoritesAppActivity>(renderer, mappedInput);
-      break;
-    case ShortcutId::Flashcards:
-      activity = std::make_unique<FlashcardsAppActivity>(renderer, mappedInput);
       break;
     case ShortcutId::FileTransfer:
       activityManager.goToFileTransfer();

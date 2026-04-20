@@ -23,7 +23,6 @@
 #include "activities/apps/AchievementsActivity.h"
 #include "activities/apps/BookmarksAppActivity.h"
 #include "activities/apps/FavoritesAppActivity.h"
-#include "activities/apps/FlashcardsAppActivity.h"
 #include "activities/apps/IfFoundActivity.h"
 #include "activities/apps/ReadMeActivity.h"
 #include "activities/apps/ReadingHeatmapActivity.h"
@@ -432,10 +431,6 @@ void HomeActivity::loop() {
           break;
         case ShortcutId::Favorites:
           startActivityForResult(std::make_unique<FavoritesAppActivity>(renderer, mappedInput),
-                                 [this](const ActivityResult&) { requestUpdate(); });
-          break;
-        case ShortcutId::Flashcards:
-          startActivityForResult(std::make_unique<FlashcardsAppActivity>(renderer, mappedInput),
                                  [this](const ActivityResult&) { requestUpdate(); });
           break;
         case ShortcutId::FileTransfer:

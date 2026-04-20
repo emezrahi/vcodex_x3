@@ -16,7 +16,6 @@
 #include "activities/apps/AchievementsActivity.h"
 #include "activities/apps/BookmarksAppActivity.h"
 #include "activities/apps/FavoritesAppActivity.h"
-#include "activities/apps/FlashcardsAppActivity.h"
 #include "activities/apps/IfFoundActivity.h"
 #include "activities/apps/ReadMeActivity.h"
 #include "activities/apps/ReadingHeatmapActivity.h"
@@ -187,12 +186,6 @@ const std::vector<SettingInfo>& getDeviceOnlyAppSettings() {
       SettingInfo::Section(StrId::STR_APPS),
       SettingInfo::Action(StrId::STR_BOOKMARKS, SettingAction::Bookmarks),
       SettingInfo::Action(StrId::STR_FAVORITES, SettingAction::Favorites),
-      SettingInfo::Section(StrId::STR_FLASHCARDS),
-      SettingInfo::Action(StrId::STR_FLASHCARDS, SettingAction::Flashcards),
-      SettingInfo::Enum(StrId::STR_STUDY_MODE, &CrossPointSettings::flashcardStudyMode,
-                        {StrId::STR_DUE, StrId::STR_SCHEDULED, StrId::STR_RANDOM_PRACTICE}),
-      SettingInfo::Enum(StrId::STR_SESSION_SIZE, &CrossPointSettings::flashcardSessionSize,
-                        {StrId::STR_NUM_10, StrId::STR_NUM_20, StrId::STR_NUM_30, StrId::STR_NUM_50, StrId::STR_ALL}),
       SettingInfo::Action(StrId::STR_SLEEP, SettingAction::SleepApp),
       SettingInfo::Action(StrId::STR_IF_FOUND_RETURN_ME, SettingAction::IfFound),
       SettingInfo::Action(StrId::STR_README, SettingAction::ReadMe),
@@ -330,14 +323,6 @@ std::string getSettingValueText(const SettingInfo& setting) {
       }
       case SettingAction::Achievements: {
         const auto* definition = findShortcutDefinition(ShortcutId::Achievements);
-        return definition ? ShortcutUiMetadata::getSubtitle(*definition) : "";
-      }
-      case SettingAction::Flashcards: {
-        const auto* definition = findShortcutDefinition(ShortcutId::Flashcards);
-        return definition ? ShortcutUiMetadata::getSubtitle(*definition) : "";
-      }
-      case SettingAction::SleepApp: {
-        const auto* definition = findShortcutDefinition(ShortcutId::Sleep);
         return definition ? ShortcutUiMetadata::getSubtitle(*definition) : "";
       }
       case SettingAction::ShortcutLocation:
@@ -694,8 +679,6 @@ void SettingsActivity::toggleCurrentSetting() {
       case SettingAction::Favorites:
         startActivityForResult(std::make_unique<FavoritesAppActivity>(renderer, mappedInput), resultHandler);
         break;
-      case SettingAction::Flashcards:
-        startActivityForResult(std::make_unique<FlashcardsAppActivity>(renderer, mappedInput), resultHandler);
         break;
       case SettingAction::SleepApp:
         startActivityForResult(std::make_unique<SleepAppActivity>(renderer, mappedInput), resultHandler);

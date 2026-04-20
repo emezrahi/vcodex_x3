@@ -22,7 +22,6 @@ enum class ShortcutId {
   RecentBooks,
   Bookmarks,
   Favorites,
-  Flashcards,
   FileTransfer,
   Sleep,
 };
@@ -80,9 +79,6 @@ inline const std::array<ShortcutDefinition, 16>& getShortcutDefinitions() {
       ShortcutDefinition{ShortcutId::Favorites, StrId::STR_FAVORITES, StrId::STR_FAVORITES_APP_DESC, UIIcon::Heart,
                          &CrossPointSettings::favoritesShortcut, &CrossPointSettings::favoritesShortcutOrder,
                          &CrossPointSettings::favoritesShortcutVisible},
-      ShortcutDefinition{ShortcutId::Flashcards, StrId::STR_FLASHCARDS, StrId::STR_FLASHCARDS_APP_DESC, UIIcon::Text,
-                         &CrossPointSettings::flashcardsShortcut, &CrossPointSettings::flashcardsShortcutOrder,
-                         &CrossPointSettings::flashcardsShortcutVisible},
       ShortcutDefinition{ShortcutId::FileTransfer, StrId::STR_FILE_TRANSFER, StrId::STR_FILE_TRANSFER_APP_DESC,
                          UIIcon::Transfer, &CrossPointSettings::fileTransferShortcut,
                          &CrossPointSettings::fileTransferShortcutOrder, &CrossPointSettings::fileTransferShortcutVisible},
